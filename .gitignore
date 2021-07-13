@@ -1,0 +1,8 @@
+node_modules
+artifacts
+!artifacts/ERC20.json
+.cache
+cache
+dist
+ipfs.cmd
+package-lock.json
