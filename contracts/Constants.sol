@@ -10,6 +10,10 @@ contract Constants is EtherTokenConstant {
     // Grupos
     bytes32 public constant ROLE = keccak256("ROLE");
 
+    // Permisos
+
+    bytes32 public constant CREATE_AVAL_ROLE = keccak256("CREATE_AVAL_ROLE");
+
     // Errores
 
     string internal constant ERROR_VAULT_NOT_CONTRACT =
