@@ -20,6 +20,7 @@ library AvalLib {
         uint256 id; // Identificación
         uint256 idIndex; // Índice del Id en avalIds
         string infoCid; // IPFS Content ID de las información (JSON) del Aval.
+        address avaldao;
         address solicitante;
         address comerciante;
         address avalado;
@@ -44,6 +45,7 @@ library AvalLib {
     function insert(
         Data storage self,
         string _infoCid,
+        address _avaldao,
         address _solicitante,
         address _comerciante,
         address _avalado
@@ -55,6 +57,7 @@ library AvalLib {
         aval.id = id;
         aval.idIndex = idIndex;
         aval.infoCid = _infoCid;
+        aval.avaldao = _avaldao;
         aval.solicitante = _solicitante;
         aval.comerciante = _comerciante;
         aval.avalado = _avalado;
@@ -70,12 +73,14 @@ library AvalLib {
         Data storage self,
         uint256 _id,
         string _infoCid,
+        address _avaldao,
         address _solicitante,
         address _comerciante,
         address _avalado
     ) public returns (uint256) {
         Aval storage aval = getAval(self, _id);
         aval.infoCid = _infoCid;
+        aval.avaldao = _avaldao;
         aval.solicitante = _solicitante;
         aval.comerciante = _comerciante;
         aval.avalado = _avalado;
@@ -86,18 +91,28 @@ library AvalLib {
         Data storage self,
         uint256 _id,
         string _infoCid,
+        address _avaldao,
         address _solicitante,
         address _comerciante,
         address _avalado
     ) public returns (uint256) {
         if (_id == 0) {
-            return insert(self, _infoCid, _solicitante, _comerciante, _avalado);
+            return
+                insert(
+                    self,
+                    _infoCid,
+                    _avaldao,
+                    _solicitante,
+                    _comerciante,
+                    _avalado
+                );
         } else {
             return
                 update(
                     self,
                     _id,
                     _infoCid,
+                    _avaldao,
                     _solicitante,
                     _comerciante,
                     _avalado

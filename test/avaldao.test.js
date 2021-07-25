@@ -46,9 +46,9 @@ contract('Avaldao App', (accounts) => {
             const { dao, acl } = await newDao(deployerAddress);
 
             // Deploy de contratos y proxies
-            const avaldaoAddress = await newApp(dao, "avaldao", avaldaoBase.address, deployerAddress);
+            const avaldaoContractAddress = await newApp(dao, "avaldao", avaldaoBase.address, deployerAddress);
             const vaultAddress = await newApp(dao, "vault", vaultBase.address, deployerAddress);
-            avaldao = await Avaldao.at(avaldaoAddress);
+            avaldao = await Avaldao.at(avaldaoContractAddress);
             vault = await Vault.at(vaultAddress);
 
             // Configuración de permisos
@@ -74,7 +74,7 @@ contract('Avaldao App', (accounts) => {
 
         it('Creación de Aval', async () => {
 
-            let receipt = await avaldao.saveAval(0, INFO_CID, comercianteAddress, avaladoAddress, { from: solicitanteAddress });
+            let receipt = await avaldao.saveAval(0, INFO_CID, avaldaoAddress, comercianteAddress, avaladoAddress, { from: solicitanteAddress });
 
             let avalId = getEventArgument(receipt, 'SaveAval', 'id');
             assert.equal(avalId, 1);
@@ -85,6 +85,7 @@ contract('Avaldao App', (accounts) => {
             assertAval(avales[0], {
                 id: 1,
                 infoCid: INFO_CID,
+                avaldao: avaldaoAddress,
                 solicitante: solicitanteAddress,
                 comerciante: comercianteAddress,
                 avalado: avaladoAddress,
@@ -97,6 +98,7 @@ contract('Avaldao App', (accounts) => {
             await assertRevert(avaldao.saveAval(
                 0,
                 INFO_CID,
+                avaldaoAddress,
                 comercianteAddress,
                 avaladoAddress,
                 { from: notAuthorized }
@@ -105,11 +107,11 @@ contract('Avaldao App', (accounts) => {
 
         it('Edición de Aval', async () => {
 
-            let receipt = await avaldao.saveAval(0, INFO_CID, comercianteAddress, avaladoAddress, { from: solicitanteAddress });
+            let receipt = await avaldao.saveAval(0, INFO_CID, avaldaoAddress, comercianteAddress, avaladoAddress, { from: solicitanteAddress });
             const avalId = getEventArgument(receipt, 'SaveAval', 'id');
 
             const NEW_INFO_CID = "b4B1A3935bF977bad5Ec753325B4CD8D889EF0e7e7c7424";
-            const receiptUpdated = await avaldao.saveAval(avalId, NEW_INFO_CID, comercianteAddress, avaladoAddress, { from: solicitanteAddress });
+            const receiptUpdated = await avaldao.saveAval(avalId, NEW_INFO_CID, avaldaoAddress, comercianteAddress, avaladoAddress, { from: solicitanteAddress });
             const updatedAvalId = getEventArgument(receiptUpdated, 'SaveAval', 'id');
 
             assert.equal(avalId.toNumber(), updatedAvalId.toNumber());
@@ -119,6 +121,7 @@ contract('Avaldao App', (accounts) => {
             assertAval(updatedAval, {
                 id: avalId.toNumber(),
                 infoCid: NEW_INFO_CID,
+                avaldao: avaldaoAddress,
                 solicitante: solicitanteAddress,
                 comerciante: comercianteAddress,
                 avalado: avaladoAddress,
@@ -128,20 +131,20 @@ contract('Avaldao App', (accounts) => {
 
         it('Edición de Aval no autorizado', async () => {
 
-            let receipt = await avaldao.saveAval(0, INFO_CID, comercianteAddress, avaladoAddress, { from: solicitanteAddress });
+            let receipt = await avaldao.saveAval(0, INFO_CID, avaldaoAddress, comercianteAddress, avaladoAddress, { from: solicitanteAddress });
             const avalId = getEventArgument(receipt, 'SaveAval', 'id');
 
             const NEW_INFO_CID = "b4B1A3935bF977bad5Ec753325B4CD8D889EF0e7e7c7424";
 
             await assertRevert(
-                avaldao.saveAval(avalId, NEW_INFO_CID, comercianteAddress, avaladoAddress, { from: notAuthorized }),
+                avaldao.saveAval(avalId, NEW_INFO_CID, avaldaoAddress, comercianteAddress, avaladoAddress, { from: notAuthorized }),
                 errors.APP_AUTH_FAILED
             );
         });
 
         it('Edición de Aval inexistente', async () => {
             await assertRevert(
-                avaldao.saveAval(10, INFO_CID, comercianteAddress, avaladoAddress, { from: solicitanteAddress }),
+                avaldao.saveAval(10, INFO_CID, avaldaoAddress, comercianteAddress, avaladoAddress, { from: solicitanteAddress }),
                 errors.AVALDAO_AVAL_NOT_EXIST
             );
         });

@@ -3403,13 +3403,6 @@ eth-block-tracker@^4.4.2:
     pify "^3.0.0"
     safe-event-emitter "^1.0.1"
 
-eth-contract-class@^0.0.12:
-  version "0.0.12"
-  resolved "https://registry.yarnpkg.com/eth-contract-class/-/eth-contract-class-0.0.12.tgz#2ff9f933f19eade50b036cce7b6e84579c166371"
-  integrity sha512-498XESd7A+ywKQfvG/h/Vj7xW/fHBrwAUkpvUn0KP2rw8FcMrskAg2yIhVV4ZX0/zoOXJr0FDG43WV7DyHIZJw==
-  dependencies:
-    web3-core-promievent "^1.0.0-beta.21"
-
 eth-ens-namehash@2.0.8, eth-ens-namehash@^2.0.0:
   version "2.0.8"
   resolved "https://registry.yarnpkg.com/eth-ens-namehash/-/eth-ens-namehash-2.0.8.tgz#229ac46eca86d52e0c991e7cb2aef83ff0f68bcf"

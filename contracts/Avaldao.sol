@@ -34,18 +34,21 @@ contract Avaldao is AragonApp, Constants {
      * @notice Crea o actualiza un aval. Quien envía la transacción es el solicitante del aval.
      * @param _id identificador del aval. 0 si se está creando un aval.
      * @param _infoCid Content ID de las información (JSON) del aval. IPFS Cid.
+     * @param _avaldao address de Avaldao
      * @param _comerciante address del Comerciante
      * @param _avalado address del Avalado
      */
     function saveAval(
         uint256 _id,
         string _infoCid,
+        address _avaldao,
         address _comerciante,
         address _avalado
     ) external auth(CREATE_AVAL_ROLE) {
         uint256 id = avalData.save(
             _id,
             _infoCid,
+            _avaldao,
             msg.sender,
             _comerciante,
             _avalado
@@ -80,6 +83,7 @@ contract Avaldao is AragonApp, Constants {
         returns (
             uint256 id,
             string infoCid,
+            address avaldao,
             address solicitante,
             address comerciante,
             address avalado,
@@ -89,6 +93,7 @@ contract Avaldao is AragonApp, Constants {
         AvalLib.Aval storage aval = _getAval(_id);
         id = aval.id;
         infoCid = aval.infoCid;
+        avaldao = aval.avaldao;
         solicitante = aval.solicitante;
         comerciante = aval.comerciante;
         avalado = aval.avalado;
