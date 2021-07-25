@@ -4,6 +4,7 @@ import "@aragon/os/contracts/apps/AragonApp.sol";
 import "@aragon/apps-vault/contracts/Vault.sol";
 import "./Constants.sol";
 import "./AvalLib.sol";
+import "./ExchangeRateProvider.sol";
 
 /**
  * @title Avaldao
@@ -12,9 +13,10 @@ import "./AvalLib.sol";
  */
 contract Avaldao is AragonApp, Constants {
     using AvalLib for AvalLib.Data;
-    Vault public vault;
 
     AvalLib.Data avalData;
+    ExchangeRateProvider public exchangeRateProvider;
+    Vault public vault;
 
     /**
      * @notice Inicializa el Avaldao App con el Vault `_vault`.
@@ -49,6 +51,13 @@ contract Avaldao is AragonApp, Constants {
             _avalado
         );
         emit SaveAval(id);
+    }
+
+    function setExchangeRateProvider(ExchangeRateProvider _exchangeRateProvider)
+        public
+        auth(SET_EXCHANGE_RATE_PROVIDER)
+    {
+        exchangeRateProvider = _exchangeRateProvider;
     }
 
     // Getters functions
