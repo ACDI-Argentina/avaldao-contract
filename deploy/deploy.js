@@ -62,8 +62,8 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
     log(` - Avaldao Base: ${avaldaoBase.address}`);
     await sleep();
 
-    const avaldaoAddress = await newApp(dao, 'avaldao', avaldaoBase.address, deployer);
-    const avaldao = await Avaldao.at(avaldaoAddress);
+    const avaldaoContractAddress = await newApp(dao, 'avaldao', avaldaoBase.address, deployer);
+    const avaldao = await Avaldao.at(avaldaoContractAddress);
     log(` - Avaldao: ${avaldao.address}`);
     await sleep();
 

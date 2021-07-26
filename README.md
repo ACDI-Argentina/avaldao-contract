@@ -103,14 +103,14 @@ Para otorgar permisos debe ejecutarse el siguiente script, especificando los par
 ```
 $env:BUIDLER_NETWORK="..."
 $env:DAO_ADDRESS="..."
-$env:AVALDAO_ADDRESS="..."
+$env:AVALDAO_CONTRACT_ADDRESS="..."
 $env:ACCOUNT_ADDRESS="..."
 $env:ROLE="..."
 node .\scripts\grant-permission.js
 ```
 - BUIDLER_NETWORK = rskRegtest | rskTestnet | rskMainnet
 - DAO_ADDRESS es la dirección del Aragon DAO disponible desde el deploy inicial según la red.
-- AVALDAO_ADDRESS es la dirección del smart contract de Avaldao.
+- AVALDAO_CONTRACT_ADDRESS es la dirección del smart contract de Avaldao.
 - ACCOUNT_ADDRESS es la dirección pública de la cuenta a la cual se otorga el permiso.
 - ROLE = ROLE
 
