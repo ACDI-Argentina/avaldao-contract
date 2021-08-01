@@ -70,7 +70,16 @@ Las direcciones que aparecen en el log deben utilizarse para configurar la aplic
 En desarrollo se utiliza un nodo local de **RSK Regtest** accesible desde *http://localhost:4444*.
 
 ```
-npm run deploy:rsk-regtest
+npm run rsk-regtest:deploy
+
+```
+
+#### Proveer de fondos
+
+Para provee de fondos a las cuentas en desarrollo, puede ejecutarse el siguiente script:
+
+```
+npm run rsk-regtest:found-accounts
 ```
 
 ### Testing
@@ -78,7 +87,7 @@ npm run deploy:rsk-regtest
 En testing se utiliza el nodo público de **RSK Testnet** accesible desde *https://public-node.testnet.rsk.co*.
 
 ```
-npm run deploy:rsk-testnet
+npm run rsk-testnet:deploy
 ```
 
 ## Actualizar smart contract

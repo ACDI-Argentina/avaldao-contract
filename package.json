@@ -9,12 +9,13 @@
     "test": "buidler test --network buidlerevm",
     "start": "buidler start",
     "test:rsk": "buidler test --network rskRegtest",
-    "deploy:rsk-regtest": "buidler deploy --network rskRegtest",
-    "deploy:rsk-testnet": "buidler deploy --network rskTestnet",
-    "deploy:rsk-mainnet": "buidler deploy --network rskMainnet",
+    "rsk-regtest:deploy": "buidler deploy --network rskRegtest",
+    "rsk-regtest:found-accounts": "node scripts/utils/rsk-fund-accounts.js",
+    "rsk-testnet:deploy": "buidler deploy --network rskTestnet",
+    "rsk-mainnet:deploy": "buidler deploy --network rskMainnet",
     "publish:major": "buidler publish major",
     "publish:minor": "buidler publish minor",
-    "publish:patch": "buidler publish patch"
+    "publish:patch": "buidler publish patch"    
   },
   "dependencies": {
     "@aragon/apps-vault": "^4.1.0",
