@@ -12,7 +12,6 @@ import "./ExchangeRateProvider.sol";
  * @notice Contrato de Avaldao.
  */
 contract Avaldao is AragonApp, Constants {
-
     using AvalLib for AvalLib.Data;
 
     struct EIP712Domain {
@@ -21,7 +20,7 @@ contract Avaldao is AragonApp, Constants {
         uint256 chainId;
         address verifyingContract;
     }
-    struct Aval2 {
+    struct AvalSignable {
         uint256 id;
         string infoCid;
         address avaldao;
@@ -29,20 +28,21 @@ contract Avaldao is AragonApp, Constants {
         address comerciante;
         address avalado;
     }
-    
 
     uint8 private constant SIGNER_COUNT = 4;
     uint8 private constant SIGN_INDEX_SOLICITANTE = 0;
     uint8 private constant SIGN_INDEX_COMERCIANTE = 1;
-    uint8 private constant SIGN_INDEX_AVALDAO = 2;
-    uint8 private constant SIGN_INDEX_AVALADO = 3;
+    uint8 private constant SIGN_INDEX_AVALADO = 2;
+    uint8 private constant SIGN_INDEX_AVALDAO = 3;
     bytes32 private DOMAIN_SEPARATOR;
-    bytes32 constant EIP712DOMAIN_TYPEHASH = keccak256(
-        "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
-    );
-    bytes32 constant AVAL_TYPEHASH = keccak256(
-        "Aval2(uint256 id,string infoCid,address avaldao,address solicitante,address comerciante,address avalado)"
-    );
+    bytes32 constant EIP712DOMAIN_TYPEHASH =
+        keccak256(
+            "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
+        );
+    bytes32 constant AVAL_SIGNABLE_TYPEHASH =
+        keccak256(
+            "AvalSignable(uint256 id,string infoCid,address avaldao,address solicitante,address comerciante,address avalado)"
+        );
 
     AvalLib.Data avalData;
     ExchangeRateProvider public exchangeRateProvider;
@@ -51,23 +51,33 @@ contract Avaldao is AragonApp, Constants {
     /**
      * @notice Inicializa el Avaldao App con el Vault `_vault`.
      * @param _vault Address del vault
+     * @param _version versión del smart contract.
+     * @param _chainId identificador de la red.
+     * @param _contractAddress dirección del smart contract (proxy Aragon).
      */
-    function initialize(Vault _vault) external onlyInit {
+    function initialize(
+        Vault _vault,
+        string _version,
+        uint256 _chainId,
+        address _contractAddress
+    ) external onlyInit {
         require(isContract(_vault), ERROR_VAULT_NOT_CONTRACT);
         vault = _vault;
 
-        DOMAIN_SEPARATOR = hash(EIP712Domain({
-            name: "Avaldao",
-            version: '1',
-            chainId: 33,
-            // verifyingContract: this
-            verifyingContract: 0x05A55E87d40572ea0F9e9D37079FB9cA11bdCc67
-        }));
+        DOMAIN_SEPARATOR = _hash(
+            EIP712Domain({
+                name: "Avaldao",
+                version: _version,
+                chainId: _chainId,
+                verifyingContract: _contractAddress
+            })
+        );
 
         initialized();
     }
 
     event SaveAval(uint256 id);
+    event SignAval(uint256 id);
 
     /**
      * @notice Crea o actualiza un aval. Quien envía la transacción es el solicitante del aval.
@@ -100,7 +110,7 @@ contract Avaldao is AragonApp, Constants {
     /**
      * @notice Firma (múltiple) el aval por todos los participantes: Solicitante, Comerciante, Avalado y Avaldao.
      * @dev Las firmas se reciben en 3 array distintos, donde cada uno contiene las variables V, R y S de las firmas en Ethereum.
-     * @dev Los elementos de los array corresponden a los firmantes, 0:Solicitante, 1:Comerciante, 2:Avalado y 4:Avaldao.
+     * @dev Los elementos de los array corresponden a los firmantes, 0:Solicitante, 1:Comerciante, 2:Avalado y 3:Avaldao.
      * @param _id identificador del aval a firmar.
      * @param _signV array con las variables V de las firmas de los participantes.
      * @param _signR array con las variables R de las firmas de los participantes.
@@ -114,54 +124,77 @@ contract Avaldao is AragonApp, Constants {
     ) public {
         AvalLib.Aval storage aval = _getAval(_id);
 
+        // El aval solo puede firmarse si está completado.
+        require(
+            aval.status == AvalLib.Status.Completado,
+            ERROR_AVAL_NO_COMPLETADO
+        );
+
         // Verifica que estén las firmas de todos lo firmantes.
         require(
             _signV.length == SIGNER_COUNT &&
                 _signR.length == SIGNER_COUNT &&
-                _signS.length == SIGNER_COUNT
+                _signS.length == SIGNER_COUNT,
+            ERROR_AVAL_FALTAN_FIRMAS
         );
 
-        // TODO Agregar un nonce a la firma.
-
         // Note: we need to use `encodePacked` here instead of `encode`.
-        bytes32 digest = keccak256(abi.encodePacked(
-            "\x19\x01",
-            DOMAIN_SEPARATOR,
-            hash(Aval2({
-                id: aval.id,
-                infoCid: aval.infoCid,
-                avaldao: aval.avaldao,
-                solicitante: aval.solicitante,
-                comerciante: aval.comerciante,
-                avalado: aval.avalado
-            }))
-        ));
+        bytes32 hashSigned = keccak256(
+            abi.encodePacked(
+                "\x19\x01",
+                DOMAIN_SEPARATOR,
+                _hash(
+                    AvalSignable({
+                        id: aval.id,
+                        infoCid: aval.infoCid,
+                        avaldao: aval.avaldao,
+                        solicitante: aval.solicitante,
+                        comerciante: aval.comerciante,
+                        avalado: aval.avalado
+                    })
+                )
+            )
+        );
 
-        verifySign(digest,
+        // Verficación de la firma del Solicitante.
+        _verifySign(
+            hashSigned,
             _signV[SIGN_INDEX_SOLICITANTE],
             _signR[SIGN_INDEX_SOLICITANTE],
             _signS[SIGN_INDEX_SOLICITANTE],
-            aval.solicitante);
+            aval.solicitante
+        );
 
-        verifySign(digest,
+        // Verficación de la firma del Comerciante.
+        _verifySign(
+            hashSigned,
             _signV[SIGN_INDEX_COMERCIANTE],
             _signR[SIGN_INDEX_COMERCIANTE],
             _signS[SIGN_INDEX_COMERCIANTE],
-            aval.comerciante);
+            aval.comerciante
+        );
 
-        verifySign(digest,
-            _signV[SIGN_INDEX_AVALDAO],
-            _signR[SIGN_INDEX_AVALDAO],
-            _signS[SIGN_INDEX_AVALDAO],
-            aval.avaldao);
-
-        verifySign(digest,
+        // Verficación de la firma del Avalado.
+        _verifySign(
+            hashSigned,
             _signV[SIGN_INDEX_AVALADO],
             _signR[SIGN_INDEX_AVALADO],
             _signS[SIGN_INDEX_AVALADO],
-            aval.avalado);
+            aval.avalado
+        );
 
-        // TODO Completar.
+        // Verficación de la firma del Avaldao.
+        _verifySign(
+            hashSigned,
+            _signV[SIGN_INDEX_AVALDAO],
+            _signR[SIGN_INDEX_AVALDAO],
+            _signS[SIGN_INDEX_AVALDAO],
+            aval.avaldao
+        );
+
+        // Se realizó la verificación de todas las firmas, por lo que el aval pasa a estado Vigente.
+        aval.status = AvalLib.Status.Vigente;
+        emit SignAval(_id);
     }
 
     function setExchangeRateProvider(ExchangeRateProvider _exchangeRateProvider)
@@ -214,39 +247,58 @@ contract Avaldao is AragonApp, Constants {
         return avalData.getAval(_id);
     }
 
-    function hash(EIP712Domain eip712Domain) internal pure returns (bytes32) {
-        return keccak256(abi.encode(
-            EIP712DOMAIN_TYPEHASH,
-            keccak256(bytes(eip712Domain.name)),
-            keccak256(bytes(eip712Domain.version)),
-            eip712Domain.chainId,
-            eip712Domain.verifyingContract
-        ));
-    }
-
-    function hash(Aval2 aval) internal pure returns (bytes32) {
-        return keccak256(abi.encode(
-            AVAL_TYPEHASH,
-            aval.id,
-            keccak256(bytes(aval.infoCid)),
-            aval.avaldao,
-            aval.solicitante,
-            aval.comerciante,
-            aval.avalado
-        ));
-    }
-
-    function verifySign(bytes32 _digest,
+    /**
+     * Verifica que el signer haya firmado el hash. La firma se especifica por las variables V, R y S.
+     *
+     * @param _hashSigned hash firmado.
+     * @param _signV variable V de las firma del firmante.
+     * @param _signR variable R de las firma del firmante.
+     * @param _signS variable S de las firma del firmante.
+     * @param  _signer firmando a comprobar si realizó la firma.
+     */
+    function _verifySign(
+        bytes32 _hashSigned,
         uint8 _signV,
         bytes32 _signR,
         bytes32 _signS,
-        address signer) internal pure {
+        address _signer
+    ) internal pure {
+        // Obtiene la dirección pública de la cuenta con la cual se realizó la firma.
         address signerRecovered = ecrecover(
-                _digest,
-                _signV,
-                _signR,
-                _signS
+            _hashSigned,
+            _signV,
+            _signR,
+            _signS
+        );
+        // La firma recuperada debe ser igual al firmante especificado.
+        require(signerRecovered == _signer, ERROR_INVALID_SIGN);
+    }
+
+    function _hash(EIP712Domain eip712Domain) internal pure returns (bytes32) {
+        return
+            keccak256(
+                abi.encode(
+                    EIP712DOMAIN_TYPEHASH,
+                    keccak256(bytes(eip712Domain.name)),
+                    keccak256(bytes(eip712Domain.version)),
+                    eip712Domain.chainId,
+                    eip712Domain.verifyingContract
+                )
             );
-        require(signerRecovered == signer, ERROR_INVALID_SIGN);
+    }
+
+    function _hash(AvalSignable avalSignable) internal pure returns (bytes32) {
+        return
+            keccak256(
+                abi.encode(
+                    AVAL_SIGNABLE_TYPEHASH,
+                    avalSignable.id,
+                    keccak256(bytes(avalSignable.infoCid)),
+                    avalSignable.avaldao,
+                    avalSignable.solicitante,
+                    avalSignable.comerciante,
+                    avalSignable.avalado
+                )
+            );
     }
 }

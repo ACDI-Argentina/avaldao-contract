@@ -10,6 +10,7 @@ const Vault = artifacts.require('Vault')
 
 const ethUtil = require('ethereumjs-util');
 const { signHash } = require('./helpers/sign')
+const bre = require("@nomiclabs/buidler")
 
 // 0: Status.Solicitado;
 // 1: Status.Rechazado;
@@ -45,6 +46,9 @@ contract('Avaldao App', (accounts) => {
 
         try {
 
+            const VERSION = '1';
+            const chainId = await bre.getChainId();
+
             // Deploy de la DAO
             const { dao, acl } = await newDao(deployerAddress);
 
@@ -59,7 +63,7 @@ contract('Avaldao App', (accounts) => {
 
             // Inicialización
             await vault.initialize()
-            await avaldao.initialize(vault.address);
+            await avaldao.initialize(vault.address, VERSION, chainId, avaldaoContractAddress);
 
         } catch (err) {
             console.error(err);
@@ -69,7 +73,11 @@ contract('Avaldao App', (accounts) => {
     context('Inicialización', function () {
 
         it('Falla al reinicializar', async () => {
-            await assertRevert(avaldao.initialize(vault.address), errors.INIT_ALREADY_INITIALIZED)
+
+            const VERSION = '1';
+            const chainId = await bre.getChainId();
+
+            await assertRevert(avaldao.initialize(vault.address, VERSION, chainId, avaldao.address), errors.INIT_ALREADY_INITIALIZED)
         })
     });
 
@@ -153,7 +161,7 @@ contract('Avaldao App', (accounts) => {
         });
     });
 
-    context('Firma de Avales', function () {
+    /*context('Firma de Avales', function () {
 
         it('Firma de Aval', async () => {
 
@@ -165,5 +173,5 @@ contract('Avaldao App', (accounts) => {
             console.log('Address: ' + address);
             console.log('Sig: ' + sig);
         });
-    });
+    });*/
 })

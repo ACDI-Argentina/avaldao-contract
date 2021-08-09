@@ -19,7 +19,7 @@ const { linkLib,
 const args = arg({ '--network': String }, process.argv);
 const network = args["--network"] || "rskRegtest";
 
-console.log(`[${new Date().toISOString()}] Deploying on ${network}...`);
+
 
 function sleep() {
     // Mainnet
@@ -27,10 +27,13 @@ function sleep() {
     return new Promise(resolve => setTimeout(resolve, 1));
 }
 
-module.exports = async ({ getNamedAccounts, deployments }) => {
+module.exports = async ({ getNamedAccounts, deployments, getChainId }) => {
 
+    const chainId = await getChainId();
     const { log } = deployments;
     const { deployer, account1, account2, account3, account4, account5 } = await getNamedAccounts();
+
+    console.log(`Network: ${chainId} ${network}.`);
 
     // TODO Integrar con DAO de Crowdfunding.
     log(`Aragon DAO deploy. TODO: INTEGRAR CON DAO DE CROWDFUNDING.`);
@@ -49,6 +52,8 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
     await sleep();
 
     log(`Avaldao deploy`);
+
+    const VERSION = '1';
 
     log(` - Libraries`);
 
@@ -104,7 +109,7 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
     // Inicialización
     await vault.initialize();
     await sleep();
-    await avaldao.initialize(vault.address);
+    await avaldao.initialize(vault.address, VERSION, chainId, avaldao.address);
     await sleep();
 
     // ERC20 Token
