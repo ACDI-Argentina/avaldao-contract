@@ -15,13 +15,14 @@
     "rsk-mainnet:deploy": "buidler deploy --network rskMainnet",
     "publish:major": "buidler publish major",
     "publish:minor": "buidler publish minor",
-    "publish:patch": "buidler publish patch"    
+    "publish:patch": "buidler publish patch"
   },
   "dependencies": {
     "@aragon/apps-vault": "^4.1.0",
     "@aragon/os": "^4.4.0",
     "bn.js": "^5.1.2",
     "buidler-deploy": "^0.4.2",
+    "ethereumjs-util": "^7.1.0",
     "madr": "^2.1.2"
   },
   "devDependencies": {

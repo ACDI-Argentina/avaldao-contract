@@ -8,6 +8,9 @@ const { errors } = require('./helpers/errors')
 const Avaldao = artifacts.require('Avaldao')
 const Vault = artifacts.require('Vault')
 
+const ethUtil = require('ethereumjs-util');
+const { signHash } = require('./helpers/sign')
+
 // 0: Status.Solicitado;
 // 1: Status.Rechazado;
 // 2: Status.Aceptado;
@@ -147,6 +150,20 @@ contract('Avaldao App', (accounts) => {
                 avaldao.saveAval(10, INFO_CID, avaldaoAddress, comercianteAddress, avaladoAddress, { from: solicitanteAddress }),
                 errors.AVALDAO_AVAL_NOT_EXIST
             );
+        });
+    });
+
+    context('Firma de Avales', function () {
+
+        it('Firma de Aval', async () => {
+
+            const privateKey = ethUtil.keccak256('cow');
+            const address = ethUtil.privateToAddress(privateKey);
+            const sig = ethUtil.ecsign(signHash(), privateKey);
+
+            console.log('Private key: ' + privateKey);
+            console.log('Address: ' + address);
+            console.log('Sig: ' + sig);
         });
     });
 })

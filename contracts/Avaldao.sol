@@ -20,7 +20,6 @@ contract Avaldao is AragonApp, Constants {
         string version;
         uint256 chainId;
         address verifyingContract;
-        bytes32 salt;
     }
     struct Aval2 {
         uint256 id;
@@ -60,10 +59,9 @@ contract Avaldao is AragonApp, Constants {
         DOMAIN_SEPARATOR = hash(EIP712Domain({
             name: "Avaldao",
             version: '1',
-            chainId: 1,
+            chainId: 33,
             // verifyingContract: this
-            verifyingContract: 0x05A55E87d40572ea0F9e9D37079FB9cA11bdCc67,
-            salt: 0xf2d857f4a3edcb9b78b4d503bfe733db1e3f6cdc2b7971ee739626c97e86a558
+            verifyingContract: 0x05A55E87d40572ea0F9e9D37079FB9cA11bdCc67
         }));
 
         initialized();
@@ -222,8 +220,7 @@ contract Avaldao is AragonApp, Constants {
             keccak256(bytes(eip712Domain.name)),
             keccak256(bytes(eip712Domain.version)),
             eip712Domain.chainId,
-            eip712Domain.verifyingContract,
-            eip712Domain.salt
+            eip712Domain.verifyingContract
         ));
     }
 
@@ -231,7 +228,7 @@ contract Avaldao is AragonApp, Constants {
         return keccak256(abi.encode(
             AVAL_TYPEHASH,
             aval.id,
-            aval.infoCid,
+            keccak256(bytes(aval.infoCid)),
             aval.avaldao,
             aval.solicitante,
             aval.comerciante,
