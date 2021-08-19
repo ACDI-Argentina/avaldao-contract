@@ -96,6 +96,9 @@ module.exports = async ({ getNamedAccounts, deployments, getChainId }) => {
     await createPermission(acl, account1, avaldao.address, CREATE_AVAL_ROLE, deployer);
     await sleep();
     log(`       - Account1: ${account1}`);
+    await grantPermission(acl, account2, avaldao.address, CREATE_AVAL_ROLE, deployer);
+    await sleep();
+    log(`       - Account2: ${account2}`);
 
     log(`   - SET_EXCHANGE_RATE_PROVIDER`);
     await createPermission(acl, deployer, avaldao.address, SET_EXCHANGE_RATE_PROVIDER, deployer);
