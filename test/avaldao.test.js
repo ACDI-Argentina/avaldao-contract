@@ -94,7 +94,7 @@ contract('Avaldao App', (accounts) => {
 
             assert.equal(avales.length, 1)
             assertAval(avales[0], {
-                id: 1,
+                blockchainId: 1,
                 infoCid: INFO_CID,
                 avaldao: avaldaoAddress,
                 solicitante: solicitanteAddress,
@@ -130,7 +130,7 @@ contract('Avaldao App', (accounts) => {
             const updatedAval = await avaldao.getAval(avalId);
 
             assertAval(updatedAval, {
-                id: avalId.toNumber(),
+                blockchainId: avalId.toNumber(),
                 infoCid: NEW_INFO_CID,
                 avaldao: avaldaoAddress,
                 solicitante: solicitanteAddress,
