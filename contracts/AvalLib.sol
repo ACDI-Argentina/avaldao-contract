@@ -17,7 +17,7 @@ library AvalLib {
 
     /// @dev Estructura que define los datos de un Aval.
     struct Aval {
-        uint256 id; // Identificación
+        string id; // Identificación
         uint256 idIndex; // Índice del Id en avalIds
         string infoCid; // IPFS Content ID de las información (JSON) del Aval.
         address avaldao;
@@ -30,93 +30,49 @@ library AvalLib {
     }
 
     struct Data {
-        /// @dev Almacena los ids de los avalaes para poder iterar
+        /// @dev Almacena los ids de los avales para poder iterar
         /// en el iterable mapping de Avales
-        uint256[] ids;
+        string[] ids;
         /// @dev Iterable Mapping de Avales
-        mapping(uint256 => Aval) avales;
+        mapping(string => Aval) avales;
     }
 
     string internal constant ERROR_AVAL_NOT_EXISTS = "AVALDAO_AVAL_NOT_EXIST";
 
-    /**
-     * @notice Inserta un nuevo Aval.
-     */
-    function insert(
-        Data storage self,
-        string _infoCid,
-        address _avaldao,
-        address _solicitante,
-        address _comerciante,
-        address _avalado
-    ) public returns (uint256) {
-        uint256 idIndex = self.ids.length;
-        uint256 id = idIndex + 1; // Generación del Id
-        self.ids.push(id);
-        Aval memory aval;
-        aval.id = id;
-        aval.idIndex = idIndex;
-        aval.infoCid = _infoCid;
-        aval.avaldao = _avaldao;
-        aval.solicitante = _solicitante;
-        aval.comerciante = _comerciante;
-        aval.avalado = _avalado;
-        aval.status = Status.Completado;
-        self.avales[id] = aval;
-        return id;
-    }
-
-    /**
-     * @notice actualiza una Aval.
-     */
-    function update(
-        Data storage self,
-        uint256 _id,
-        string _infoCid,
-        address _avaldao,
-        address _solicitante,
-        address _comerciante,
-        address _avalado
-    ) public returns (uint256) {
-        Aval storage aval = getAval(self, _id);
-        aval.infoCid = _infoCid;
-        aval.avaldao = _avaldao;
-        aval.solicitante = _solicitante;
-        aval.comerciante = _comerciante;
-        aval.avalado = _avalado;
-        return _id;
-    }
-
     function save(
         Data storage self,
-        uint256 _id,
+        string _id,
         string _infoCid,
         address _avaldao,
         address _solicitante,
         address _comerciante,
         address _avalado
-    ) public returns (uint256) {
-        if (_id == 0) {
-            return
-                insert(
-                    self,
-                    _infoCid,
-                    _avaldao,
-                    _solicitante,
-                    _comerciante,
-                    _avalado
-                );
+    ) public {
+        Aval storage aval = self.avales[_id];
+        if (
+            keccak256(abi.encodePacked(aval.id)) !=
+            keccak256(abi.encodePacked(_id))
+        ) {
+            // El aval no existe, por lo que es creado.
+            uint256 idIndex = self.ids.length;
+            self.ids.push(_id);
+            Aval memory newAval;
+            newAval.id = _id;
+            newAval.idIndex = idIndex;
+            newAval.infoCid = _infoCid;
+            newAval.avaldao = _avaldao;
+            newAval.solicitante = _solicitante;
+            newAval.comerciante = _comerciante;
+            newAval.avalado = _avalado;
+            newAval.status = Status.Completado;
+            self.avales[_id] = newAval;
         } else {
-            return
-                update(
-                    self,
-                    _id,
-                    _infoCid,
-                    _avaldao,
-                    _solicitante,
-                    _comerciante,
-                    _avalado
-                );
+            // El aval existe, por lo que es actualizado.
+            aval.infoCid = _infoCid;
+            aval.avaldao = _avaldao;
+            aval.solicitante = _solicitante;
+            aval.comerciante = _comerciante;
+            aval.avalado = _avalado;
         }
     }
 
@@ -124,12 +80,16 @@ library AvalLib {
      * @notice Obtiene el Aval a partir de su `_id`
      * @return Aval cuya identificación coincide con la especificada.
      */
-    function getAval(Data storage self, uint256 _id)
+    function getAval(Data storage self, string _id)
         public
         view
         returns (Aval storage)
     {
-        require(self.avales[_id].id != 0, ERROR_AVAL_NOT_EXISTS);
+        require(
+            keccak256(abi.encodePacked(self.avales[_id].id)) ==
+                keccak256(abi.encodePacked(_id)),
+            ERROR_AVAL_NOT_EXISTS
+        );
         return self.avales[_id];
     }
 }

@@ -6,7 +6,7 @@ const errors = makeErrorMappingProxy({
   INIT_ALREADY_INITIALIZED: 'INIT_ALREADY_INITIALIZED',
 
   // Avaldo errors
-  AVALDAO_AVAL_NOT_EXIST: 'AVALDAO_AVAL_NOT_EXIST'
+  
 })
 
 module.exports = {

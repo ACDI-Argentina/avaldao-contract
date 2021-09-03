@@ -1,4 +1,5 @@
 pragma solidity ^0.4.24;
+pragma experimental ABIEncoderV2;
 
 import "@aragon/os/contracts/apps/AragonApp.sol";
 import "@aragon/apps-vault/contracts/Vault.sol";
@@ -21,7 +22,7 @@ contract Avaldao is AragonApp, Constants {
         address verifyingContract;
     }
     struct AvalSignable {
-        uint256 id;
+        string id;
         string infoCid;
         address avaldao;
         address solicitante;
@@ -41,7 +42,7 @@ contract Avaldao is AragonApp, Constants {
         );
     bytes32 constant AVAL_SIGNABLE_TYPEHASH =
         keccak256(
-            "AvalSignable(uint256 id,string infoCid,address avaldao,address solicitante,address comerciante,address avalado)"
+            "AvalSignable(string id,string infoCid,address avaldao,address solicitante,address comerciante,address avalado)"
         );
 
     AvalLib.Data avalData;
@@ -76,25 +77,25 @@ contract Avaldao is AragonApp, Constants {
         initialized();
     }
 
-    event SaveAval(uint256 id);
-    event SignAval(uint256 id);
+    event SaveAval(string id);
+    event SignAval(string id);
 
     /**
      * @notice Crea o actualiza un aval. Quien envía la transacción es el solicitante del aval.
-     * @param _id identificador del aval. 0 si se está creando un aval.
+     * @param _id identificador del aval.
      * @param _infoCid Content ID de las información (JSON) del aval. IPFS Cid.
      * @param _avaldao address de Avaldao
      * @param _comerciante address del Comerciante
      * @param _avalado address del Avalado
      */
     function saveAval(
-        uint256 _id,
+        string _id,
         string _infoCid,
         address _avaldao,
         address _comerciante,
         address _avalado
     ) external auth(CREATE_AVAL_ROLE) {
-        uint256 id = avalData.save(
+        avalData.save(
             _id,
             _infoCid,
             _avaldao,
@@ -102,10 +103,8 @@ contract Avaldao is AragonApp, Constants {
             _comerciante,
             _avalado
         );
-        emit SaveAval(id);
+        emit SaveAval(_id);
     }
-
-    // Note that address recovered from signatures must be strictly increasing, in order to prevent duplicates
 
     /**
      * @notice Firma (múltiple) el aval por todos los participantes: Solicitante, Comerciante, Avalado y Avaldao.
@@ -117,7 +116,7 @@ contract Avaldao is AragonApp, Constants {
      * @param _signS array con las variables S de las firmas de los participantes.
      */
     function signAval(
-        uint256 _id,
+        string _id,
         uint8[] _signV,
         bytes32[] _signR,
         bytes32[] _signS
@@ -210,7 +209,7 @@ contract Avaldao is AragonApp, Constants {
      * @notice Obtiene todos los identificadores de Avales.
      * @return Arreglo con todos los identificadores de Avales.
      */
-    function getAvalIds() external view returns (uint256[]) {
+    function getAvalIds() external view returns (string[]) {
         return avalData.ids;
     }
 
@@ -218,11 +217,11 @@ contract Avaldao is AragonApp, Constants {
      * @notice Obtiene el Aval cuyo identificador coincide con `_id`.
      * @return Datos del Aval.
      */
-    function getAval(uint256 _id)
+    function getAval(string _id)
         external
         view
         returns (
-            uint256 id,
+            string id,
             string infoCid,
             address avaldao,
             address solicitante,
@@ -243,7 +242,7 @@ contract Avaldao is AragonApp, Constants {
 
     // Internal functions
 
-    function _getAval(uint256 _id) private returns (AvalLib.Aval storage) {
+    function _getAval(string _id) private returns (AvalLib.Aval storage) {
         return avalData.getAval(_id);
     }
 
@@ -292,7 +291,7 @@ contract Avaldao is AragonApp, Constants {
             keccak256(
                 abi.encode(
                     AVAL_SIGNABLE_TYPEHASH,
-                    avalSignable.id,
+                    keccak256(bytes(avalSignable.id)),
                     keccak256(bytes(avalSignable.infoCid)),
                     avalSignable.avaldao,
                     avalSignable.solicitante,

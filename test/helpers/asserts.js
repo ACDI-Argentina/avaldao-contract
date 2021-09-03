@@ -1,5 +1,5 @@
 const assertAval = (aval, avalExpected) => {
-  assert.equal(aval.blockchainId, avalExpected.blockchainId);
+  assert.equal(aval.id, avalExpected.id);
   assert.equal(aval.infoCid, avalExpected.infoCid);
   assert.equal(aval.avaldao, avalExpected.avaldao);
   assert.equal(aval.solicitante, avalExpected.solicitante);

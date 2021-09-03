@@ -94,7 +94,7 @@ contract('Avaldao App', (accounts) => {
 
             assert.equal(avales.length, 1)
             assertAval(avales[0], {
-                blockchainId: 1,
+                id: 1,
                 infoCid: INFO_CID,
                 avaldao: avaldaoAddress,
                 solicitante: solicitanteAddress,
@@ -130,7 +130,7 @@ contract('Avaldao App', (accounts) => {
             const updatedAval = await avaldao.getAval(avalId);
 
             assertAval(updatedAval, {
-                blockchainId: avalId.toNumber(),
+                id: avalId.toNumber(),
                 infoCid: NEW_INFO_CID,
                 avaldao: avaldaoAddress,
                 solicitante: solicitanteAddress,
@@ -150,13 +150,6 @@ contract('Avaldao App', (accounts) => {
             await assertRevert(
                 avaldao.saveAval(avalId, NEW_INFO_CID, avaldaoAddress, comercianteAddress, avaladoAddress, { from: notAuthorized }),
                 errors.APP_AUTH_FAILED
-            );
-        });
-
-        it('Edición de Aval inexistente', async () => {
-            await assertRevert(
-                avaldao.saveAval(10, INFO_CID, avaldaoAddress, comercianteAddress, avaladoAddress, { from: solicitanteAddress }),
-                errors.AVALDAO_AVAL_NOT_EXIST
             );
         });
     });
