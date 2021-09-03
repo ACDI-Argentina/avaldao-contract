@@ -85,16 +85,18 @@ contract('Avaldao App', (accounts) => {
 
         it('Creación de Aval', async () => {
 
-            let receipt = await avaldao.saveAval(0, INFO_CID, avaldaoAddress, comercianteAddress, avaladoAddress, { from: solicitanteAddress });
+            let avalId = '6130197bf45de20013f29190';
 
-            let avalId = getEventArgument(receipt, 'SaveAval', 'id');
-            assert.equal(avalId, 1);
+            let receipt = await avaldao.saveAval(avalId, INFO_CID, avaldaoAddress, comercianteAddress, avaladoAddress, { from: solicitanteAddress });
+
+            let avalEventId = getEventArgument(receipt, 'SaveAval', 'id');
+            assert.equal(avalEventId, avalId);
 
             let avales = await getAvales(avaldao);
 
             assert.equal(avales.length, 1)
             assertAval(avales[0], {
-                id: 1,
+                id: avalId,
                 infoCid: INFO_CID,
                 avaldao: avaldaoAddress,
                 solicitante: solicitanteAddress,
@@ -106,8 +108,10 @@ contract('Avaldao App', (accounts) => {
 
         it('Creación de Aval no autorizado', async () => {
 
+            let avalId = '613147122919060012190e66';
+
             await assertRevert(avaldao.saveAval(
-                0,
+                avalId,
                 INFO_CID,
                 avaldaoAddress,
                 comercianteAddress,
@@ -118,19 +122,21 @@ contract('Avaldao App', (accounts) => {
 
         it('Edición de Aval', async () => {
 
-            let receipt = await avaldao.saveAval(0, INFO_CID, avaldaoAddress, comercianteAddress, avaladoAddress, { from: solicitanteAddress });
-            const avalId = getEventArgument(receipt, 'SaveAval', 'id');
+            let avalId = '613166ebcccc9e0012c4229b';
+
+            let receipt = await avaldao.saveAval(avalId, INFO_CID, avaldaoAddress, comercianteAddress, avaladoAddress, { from: solicitanteAddress });
+            const avalEventId = getEventArgument(receipt, 'SaveAval', 'id');
 
             const NEW_INFO_CID = "b4B1A3935bF977bad5Ec753325B4CD8D889EF0e7e7c7424";
-            const receiptUpdated = await avaldao.saveAval(avalId, NEW_INFO_CID, avaldaoAddress, comercianteAddress, avaladoAddress, { from: solicitanteAddress });
-            const updatedAvalId = getEventArgument(receiptUpdated, 'SaveAval', 'id');
+            const receiptUpdated = await avaldao.saveAval(avalEventId, NEW_INFO_CID, avaldaoAddress, comercianteAddress, avaladoAddress, { from: solicitanteAddress });
+            const updatedAvalEventId = getEventArgument(receiptUpdated, 'SaveAval', 'id');
 
-            assert.equal(avalId.toNumber(), updatedAvalId.toNumber());
+            assert.equal(avalEventId, updatedAvalEventId);
 
             const updatedAval = await avaldao.getAval(avalId);
 
             assertAval(updatedAval, {
-                id: avalId.toNumber(),
+                id: avalId,
                 infoCid: NEW_INFO_CID,
                 avaldao: avaldaoAddress,
                 solicitante: solicitanteAddress,
@@ -142,13 +148,15 @@ contract('Avaldao App', (accounts) => {
 
         it('Edición de Aval no autorizado', async () => {
 
-            let receipt = await avaldao.saveAval(0, INFO_CID, avaldaoAddress, comercianteAddress, avaladoAddress, { from: solicitanteAddress });
-            const avalId = getEventArgument(receipt, 'SaveAval', 'id');
+            let avalId = '61316fa69a53310013d86292';
+
+            let receipt = await avaldao.saveAval(avalId, INFO_CID, avaldaoAddress, comercianteAddress, avaladoAddress, { from: solicitanteAddress });
+            const avalEventId = getEventArgument(receipt, 'SaveAval', 'id');
 
             const NEW_INFO_CID = "b4B1A3935bF977bad5Ec753325B4CD8D889EF0e7e7c7424";
 
             await assertRevert(
-                avaldao.saveAval(avalId, NEW_INFO_CID, avaldaoAddress, comercianteAddress, avaladoAddress, { from: notAuthorized }),
+                avaldao.saveAval(avalEventId, NEW_INFO_CID, avaldaoAddress, comercianteAddress, avaladoAddress, { from: notAuthorized }),
                 errors.APP_AUTH_FAILED
             );
         });
