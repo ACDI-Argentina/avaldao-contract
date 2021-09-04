@@ -19,6 +19,9 @@ const bre = require("@nomiclabs/buidler")
 // 4: Status.Vigente;
 // 5: Status.Finalizado;
 const AVAL_STATUS_COMPLETADO = 3;
+const AVAL_STATUS_VIGENTE = 4;
+
+const VERSION = '1';
 
 contract('Avaldao App', (accounts) => {
     const [
@@ -33,6 +36,7 @@ contract('Avaldao App', (accounts) => {
     let avaldaoBase, avaldao;
     let vaultBase, vault;
     let RBTC;
+    let CHAIN_ID;
 
     before(async () => {
         avaldaoBase = await newAvaldao(deployerAddress);
@@ -40,14 +44,15 @@ contract('Avaldao App', (accounts) => {
         // Setup constants
         CREATE_AVAL_ROLE = await avaldaoBase.CREATE_AVAL_ROLE();
         RBTC = '0x0000000000000000000000000000000000000000';
+        CHAIN_ID = await bre.getChainId();
     })
 
     beforeEach(async () => {
 
         try {
 
-            const VERSION = '1';
-            const chainId = await bre.getChainId();
+
+
 
             // Deploy de la DAO
             const { dao, acl } = await newDao(deployerAddress);
@@ -63,7 +68,7 @@ contract('Avaldao App', (accounts) => {
 
             // Inicialización
             await vault.initialize()
-            await avaldao.initialize(vault.address, VERSION, chainId, avaldaoContractAddress);
+            await avaldao.initialize(vault.address, VERSION, CHAIN_ID, avaldaoContractAddress);
 
         } catch (err) {
             console.error(err);
@@ -74,10 +79,7 @@ contract('Avaldao App', (accounts) => {
 
         it('Falla al reinicializar', async () => {
 
-            const VERSION = '1';
-            const chainId = await bre.getChainId();
-
-            await assertRevert(avaldao.initialize(vault.address, VERSION, chainId, avaldao.address), errors.INIT_ALREADY_INITIALIZED)
+            await assertRevert(avaldao.initialize(vault.address, VERSION, CHAIN_ID, avaldao.address), errors.INIT_ALREADY_INITIALIZED)
         })
     });
 
@@ -85,7 +87,7 @@ contract('Avaldao App', (accounts) => {
 
         it('Creación de Aval', async () => {
 
-            let avalId = '6130197bf45de20013f29190';
+            const avalId = '6130197bf45de20013f29190';
 
             let receipt = await avaldao.saveAval(avalId, INFO_CID, avaldaoAddress, comercianteAddress, avaladoAddress, { from: solicitanteAddress });
 
@@ -108,7 +110,7 @@ contract('Avaldao App', (accounts) => {
 
         it('Creación de Aval no autorizado', async () => {
 
-            let avalId = '613147122919060012190e66';
+            const avalId = '613147122919060012190e66';
 
             await assertRevert(avaldao.saveAval(
                 avalId,
@@ -122,7 +124,7 @@ contract('Avaldao App', (accounts) => {
 
         it('Edición de Aval', async () => {
 
-            let avalId = '613166ebcccc9e0012c4229b';
+            const avalId = '613166ebcccc9e0012c4229b';
 
             let receipt = await avaldao.saveAval(avalId, INFO_CID, avaldaoAddress, comercianteAddress, avaladoAddress, { from: solicitanteAddress });
             const avalEventId = getEventArgument(receipt, 'SaveAval', 'id');
@@ -148,7 +150,7 @@ contract('Avaldao App', (accounts) => {
 
         it('Edición de Aval no autorizado', async () => {
 
-            let avalId = '61316fa69a53310013d86292';
+            const avalId = '61316fa69a53310013d86292';
 
             let receipt = await avaldao.saveAval(avalId, INFO_CID, avaldaoAddress, comercianteAddress, avaladoAddress, { from: solicitanteAddress });
             const avalEventId = getEventArgument(receipt, 'SaveAval', 'id');
@@ -162,17 +164,63 @@ contract('Avaldao App', (accounts) => {
         });
     });
 
-    /*context('Firma de Avales', function () {
+    context('Firma de Avales', function () {
 
-        it('Firma de Aval', async () => {
+        it.skip('Firma de aval', async () => {
 
-            const privateKey = ethUtil.keccak256('cow');
-            const address = ethUtil.privateToAddress(privateKey);
-            const sig = ethUtil.ecsign(signHash(), privateKey);
+            const avalId = '613389b55ee0c60012a42adf';
+            const infoCid = '/ipfs/QmWCKd1JacFZ3W2ygfYT4uwvmAsnrA6QZ9X5k3mPxb8QjW'
 
-            console.log('Private key: ' + privateKey);
-            console.log('Address: ' + address);
-            console.log('Sig: ' + sig);
+            const typedData = {
+                types: {
+                    EIP712Domain: [
+                        { name: 'name', type: 'string' },
+                        { name: 'version', type: 'string' },
+                        { name: 'chainId', type: 'uint256' },
+                        { name: 'verifyingContract', type: 'address' }
+                    ],
+                    AvalSignable: [
+                        { name: 'id', type: 'string' },
+                        { name: 'infoCid', type: 'string' },
+                        { name: 'avaldao', type: 'address' },
+                        { name: 'solicitante', type: 'address' },
+                        { name: 'comerciante', type: 'address' },
+                        { name: 'avalado', type: 'address' }
+                    ]
+                },
+                primaryType: 'AvalSignable',
+                domain: {
+                    name: 'Avaldao',
+                    version: VERSION,
+                    chainId: CHAIN_ID,
+                    verifyingContract: config.avaldaoContractAddress
+                },
+                message: {
+                    id: avalId,
+                    infoCid: infoCid,
+                    avaldao: avaldaoAddress,
+                    solicitante: solicitanteAddress,
+                    comerciante: comercianteAddress,
+                    avalado: avaladoAddress
+                }
+            };
+
+            const data = JSON.stringify(typedData);
+
+            let result = await bre.network.provider.request(
+                {
+                    method: "eth_signTypedData_v4",
+                    params: [avaldaoAddress, data],
+                    from: avaldaoAddress
+                });
+
+            console.log('Firma.', result);
+
+            // TODO El método bre.network.provider.request no es una función en Buidler.
+            // Según la documentación de Hardhat, éste puede invocarse, pero no hay nada respecto Buidler.
+            // https://hardhat.org/hardhat-network/reference/
+            // Una vez migrado a Hardhat (Issue https://github.com/ACDI-Argentina/avaldao/issues/23)
+            // debe agregarse este test.
         });
-    });*/
+    });
 })

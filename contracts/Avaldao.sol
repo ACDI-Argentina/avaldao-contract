@@ -123,6 +123,9 @@ contract Avaldao is AragonApp, Constants {
     ) public {
         AvalLib.Aval storage aval = _getAval(_id);
 
+        // El aval solo puede firmarse por Avaldao.
+        require(aval.avaldao == msg.sender, ERROR_AUTH_FAILED);
+
         // El aval solo puede firmarse si está completado.
         require(
             aval.status == AvalLib.Status.Completado,
