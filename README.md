@@ -71,8 +71,18 @@ En desarrollo se utiliza un nodo local de **RSK Regtest** accesible desde *http:
 
 ```
 npm run rsk-regtest:deploy
+```
+
+Opcionalmente, puede especificarse qué *DAO* o *Exchange Rate Provider* utilizar en el deploy:
 
 ```
+$env:DAO_ADDRESS="..."
+$env:EXCHANGE_RATE_PROVIDER_ADDRESS="..."
+npm run rsk-regtest:deploy
+```
+
+- DAO_ADDRESS es la dirección del Aragon DAOdisponible desde el deploy inicial según la red.
+- EXCHANGE_RATE_PROVIDER_ADDRESS es la dirección del *Exchange Rate Provider* a utilizar.
 
 #### Proveer de fondos
 
@@ -87,8 +97,24 @@ npm run rsk-regtest:found-accounts
 En testing se utiliza el nodo público de **RSK Testnet** accesible desde *https://public-node.testnet.rsk.co*.
 
 ```
+$env:DAO_ADDRESS="..."
+$env:EXCHANGE_RATE_PROVIDER_ADDRESS="..."
 npm run rsk-testnet:deploy
 ```
+- DAO_ADDRESS es la dirección del Aragon DAOdisponible desde el deploy inicial según la red.
+- EXCHANGE_RATE_PROVIDER_ADDRESS es la dirección del *Exchange Rate Provider* a utilizar.
+
+### Producción
+
+En testing se utiliza el nodo público de **RSK Mainnet** accesible desde *https://public-node.rsk.coo*.
+
+```
+$env:DAO_ADDRESS="..."
+$env:EXCHANGE_RATE_PROVIDER_ADDRESS="..."
+npm run rsk-mainnet:deploy
+```
+- DAO_ADDRESS es la dirección del Aragon DAOdisponible desde el deploy inicial según la red.
+- EXCHANGE_RATE_PROVIDER_ADDRESS es la dirección del *Exchange Rate Provider* a utilizar.
 
 ## Actualizar smart contract
 

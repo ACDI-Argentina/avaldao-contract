@@ -1,5 +1,8 @@
 const arg = require("arg");
 
+const Kernel = artifacts.require('@aragon/os/build/contracts/kernel/Kernel')
+const ACL = artifacts.require('@aragon/os/build/contracts/acl/ACL')
+
 const Avaldao = artifacts.require('Avaldao')
 const AvalLib = artifacts.require('AvalLib')
 const Vault = artifacts.require('Vault')
@@ -29,31 +32,36 @@ function sleep() {
 
 module.exports = async ({ getNamedAccounts, deployments, getChainId }) => {
 
-    const chainId = await getChainId();
+    const VERSION = '1';
+    const CHAIN_ID = await getChainId();
+
     const { log } = deployments;
     const { deployer, account1, account2, account3, account4, account5 } = await getNamedAccounts();
 
-    console.log(`Network: ${chainId} ${network}.`);
+    console.log(`Network: ${CHAIN_ID} ${network}.`);
 
-    // TODO Integrar con DAO de Crowdfunding.
-    log(`Aragon DAO deploy. TODO: INTEGRAR CON DAO DE CROWDFUNDING.`);
+    let dao;
+    let acl;
+    if (process.env.DAO_ADDRESS) {
+        // Se especificó la dirección de la DAO, por lo que no es creada.
+        log(`Aragon DAO update: ${process.env.DAO_ADDRESS}.`);
+        dao = await Kernel.at(process.env.DAO_ADDRESS);
+        acl = await ACL.at(await dao.acl());
+    } else {
+        // No se especificó DAO, por lo que es desplegada una nueva.
+        log(`Aragon DAO deploy.`);
+        // Deploy de la DAO
+        const response = await newDao(deployer);
+        dao = response.dao;
+        acl = response.acl;
+    }
 
-    // Deploy de la DAO
-    const { kernelBase, aclBase, dao, acl } = await newDao(deployer);
-
-    log(` - Kernel Base: ${kernelBase.address}`);
-    log(` - ACL Base: ${aclBase.address}`);
     log(` - DAO: ${dao.address}`);
     log(` - ACL: ${acl.address}`);
-
-    //const dao = await Kernel.at('0xd598F0116dd8c36b4E2aEcF7ac54553E93bD340A');
-    //const acl = await ACL.at(await dao.acl());
 
     await sleep();
 
     log(`Avaldao deploy`);
-
-    const VERSION = '1';
 
     log(` - Libraries`);
 
@@ -74,7 +82,7 @@ module.exports = async ({ getNamedAccounts, deployments, getChainId }) => {
 
     const vaultBase = await Vault.new({ from: deployer });
     await sleep();
-    const vaultAddress = await newApp(dao, 'vault', vaultBase.address, deployer);
+    const vaultAddress = await newApp(dao, 'avaldaoVault', vaultBase.address, deployer);
     await sleep();
     const vault = await Vault.at(vaultAddress);
     await sleep();
@@ -112,7 +120,7 @@ module.exports = async ({ getNamedAccounts, deployments, getChainId }) => {
     // Inicialización
     await vault.initialize();
     await sleep();
-    await avaldao.initialize(vault.address, VERSION, chainId, avaldao.address);
+    await avaldao.initialize(vault.address, VERSION, CHAIN_ID, avaldao.address);
     await sleep();
 
     // ERC20 Token
@@ -176,17 +184,26 @@ module.exports = async ({ getNamedAccounts, deployments, getChainId }) => {
     log(`   - MoCState: ${moCStateAddress}`);
     log(`   - RoCState: ${roCStateAddress}`);
 
-    const exchangeRateProvider = await ExchangeRateProvider.new(
-        moCStateAddress,
-        roCStateAddress,
-        rifAddress,
-        docAddress,
-        DOC_PRICE,
-        { from: deployer });
-    log(`   - ExchangeRateProvider: ${exchangeRateProvider.address}. TODO: INTEGRAR CON ExchangeRateProvider DE CROWDFUNDING.`);
-    await sleep();
+    let exchangeRateProviderAddress;
+    if (process.env.EXCHANGE_RATE_PROVIDER_ADDRESS) {
+        // Se especificó la dirección del Exchange Rate Provider, por lo que no es creado.
+        exchangeRateProviderAddress = process.env.EXCHANGE_RATE_PROVIDER_ADDRESS;
+    } else {
+        // No se especificó la dirección del Exchange Rate Provider, por lo que es creado.
+        log(`Exchange Rate Provider deploy.`);
+        const exchangeRateProvider = await ExchangeRateProvider.new(
+            moCStateAddress,
+            roCStateAddress,
+            rifAddress,
+            docAddress,
+            DOC_PRICE,
+            { from: deployer });
+        exchangeRateProviderAddress = exchangeRateProvider.address;
+        await sleep();
+    }
 
-    await avaldao.setExchangeRateProvider(exchangeRateProvider.address, { from: deployer });
+    log(`   - ExchangeRateProvider: ${exchangeRateProviderAddress}.`);
+    await avaldao.setExchangeRateProvider(exchangeRateProviderAddress, { from: deployer });
     await sleep();
 
     log(` - Initialized`);
