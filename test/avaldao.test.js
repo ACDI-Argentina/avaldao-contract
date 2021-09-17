@@ -7,8 +7,13 @@ const { createPermission, grantPermission } = require('../scripts/permissions')
 const { errors } = require('./helpers/errors')
 const Avaldao = artifacts.require('Avaldao')
 const Vault = artifacts.require('Vault')
-
-const ethUtil = require('ethereumjs-util');
+//Price providers
+const ExchangeRateProvider = artifacts.require('ExchangeRateProvider')
+const MoCStateMock = artifacts.require('./mocks/MoCStateMock')
+const RoCStateMock = artifacts.require('./mocks/RoCStateMock')
+const RifTokenMock = artifacts.require('./mocks/RifTokenMock')
+const DocTokenMock = artifacts.require('./mocks/DocTokenMock')
+const BN = require('bn.js');
 const { signHash } = require('./helpers/sign')
 const bre = require("@nomiclabs/buidler")
 
@@ -36,23 +41,28 @@ contract('Avaldao App', (accounts) => {
     let avaldaoBase, avaldao;
     let vaultBase, vault;
     let RBTC;
+    let RBTC_PRICE;
+    let RIF_PRICE;
+    let DOC_PRICE;
     let CHAIN_ID;
 
     before(async () => {
         avaldaoBase = await newAvaldao(deployerAddress);
         vaultBase = await Vault.new({ from: deployerAddress });
         // Setup constants
+        SET_EXCHANGE_RATE_PROVIDER = await avaldaoBase.SET_EXCHANGE_RATE_PROVIDER();
         CREATE_AVAL_ROLE = await avaldaoBase.CREATE_AVAL_ROLE();
+        ENABLE_TOKEN_ROLE = await avaldaoBase.ENABLE_TOKEN_ROLE();
         RBTC = '0x0000000000000000000000000000000000000000';
+        RBTC_PRICE = new BN('58172000000000000000000'); // Precio del RBTC: 58172,00 US$
+        RIF_PRICE = new BN('00000391974000000000000'); // Precio del RIF: 0,391974 US$
+        DOC_PRICE = new BN('00001000000000000000000'); // Precio del DOC: 1,00 US$
         CHAIN_ID = await bre.getChainId();
     })
 
     beforeEach(async () => {
 
         try {
-
-
-
 
             // Deploy de la DAO
             const { dao, acl } = await newDao(deployerAddress);
@@ -64,11 +74,33 @@ contract('Avaldao App', (accounts) => {
             vault = await Vault.at(vaultAddress);
 
             // Configuración de permisos
+            await createPermission(acl, deployerAddress, avaldao.address, SET_EXCHANGE_RATE_PROVIDER, deployerAddress);
+            await createPermission(acl, deployerAddress, avaldao.address, ENABLE_TOKEN_ROLE, deployerAddress);
             await createPermission(acl, solicitanteAddress, avaldao.address, CREATE_AVAL_ROLE, deployerAddress);
-
+            
             // Inicialización
             await vault.initialize()
             await avaldao.initialize(vault.address, VERSION, CHAIN_ID, avaldaoContractAddress);
+
+            // Se habilita el RBTC para mantener fondos de garantía.
+            await avaldao.enableToken(RBTC, { from: deployerAddress });
+
+            //Inicializacion de Token y Price Provider
+
+            const rifTokenMock = await RifTokenMock.new({ from: deployerAddress });
+            const docTokenMock = await DocTokenMock.new({ from: deployerAddress });
+
+            const moCStateMock = await MoCStateMock.new(RBTC_PRICE);
+            const roCStateMock = await RoCStateMock.new(RIF_PRICE);
+            const exchangeRateProvider = await ExchangeRateProvider.new(
+                moCStateMock.address,
+                roCStateMock.address,
+                rifTokenMock.address,
+                docTokenMock.address,
+                DOC_PRICE,
+                { from: deployerAddress });
+
+            await avaldao.setExchangeRateProvider(exchangeRateProvider.address);
 
         } catch (err) {
             console.error(err);
@@ -221,6 +253,17 @@ contract('Avaldao App', (accounts) => {
             // https://hardhat.org/hardhat-network/reference/
             // Una vez migrado a Hardhat (Issue https://github.com/ACDI-Argentina/avaldao/issues/23)
             // debe agregarse este test.
+        });
+    });
+
+    context('Fondo de garantía', function () {
+
+        it('Fondo de garantía cero', async () => {
+
+            const availableFiatFundExpected = new BN('0');
+            const availableFiatFund = await avaldao.getAvailableFiatFund({ from: solicitanteAddress });
+
+            assert.equal(availableFiatFund.toString(), availableFiatFundExpected.toString());
         });
     });
 })

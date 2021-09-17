@@ -98,6 +98,7 @@ module.exports = async ({ getNamedAccounts, deployments, getChainId }) => {
 
     let CREATE_AVAL_ROLE = await avaldaoBase.CREATE_AVAL_ROLE();
     let SET_EXCHANGE_RATE_PROVIDER = await avaldaoBase.SET_EXCHANGE_RATE_PROVIDER();
+    let ENABLE_TOKEN_ROLE = await avaldaoBase.ENABLE_TOKEN_ROLE();
     let TRANSFER_ROLE = await vaultBase.TRANSFER_ROLE()
 
     log(`   - CREATE_AVAL_ROLE`);
@@ -112,6 +113,9 @@ module.exports = async ({ getNamedAccounts, deployments, getChainId }) => {
     await createPermission(acl, deployer, avaldao.address, SET_EXCHANGE_RATE_PROVIDER, deployer);
     await sleep();
     log(`       - Deployer: ${deployer}`);
+
+    log(`   - ENABLE_TOKEN_ROLE`);
+    await createPermission(acl, deployer, avaldao.address, ENABLE_TOKEN_ROLE, deployer);
 
     await createPermission(acl, avaldao.address, vault.address, TRANSFER_ROLE, deployer);
     await sleep();
@@ -205,6 +209,17 @@ module.exports = async ({ getNamedAccounts, deployments, getChainId }) => {
     log(`   - ExchangeRateProvider: ${exchangeRateProviderAddress}.`);
     await avaldao.setExchangeRateProvider(exchangeRateProviderAddress, { from: deployer });
     await sleep();
+
+    log(` - Enable token funds`);
+
+    await avaldao.enableToken(RBTC, { from: deployer });
+    log(`   - Enable RBTC`);
+
+    await avaldao.enableToken(rifAddress, { from: deployer });
+    log(`   - RifToken`);
+    
+    await avaldao.enableToken(docAddress, { from: deployer });
+    log(`   - DocToken`);
 
     log(` - Initialized`);
 }

@@ -2,6 +2,7 @@ pragma solidity ^0.4.24;
 pragma experimental ABIEncoderV2;
 
 import "@aragon/os/contracts/apps/AragonApp.sol";
+import "@aragon/os/contracts/lib/math/SafeMath.sol";
 import "@aragon/apps-vault/contracts/Vault.sol";
 import "./Constants.sol";
 import "./AvalLib.sol";
@@ -14,6 +15,7 @@ import "./ExchangeRateProvider.sol";
  */
 contract Avaldao is AragonApp, Constants {
     using AvalLib for AvalLib.Data;
+    using SafeMath for uint256;
 
     struct EIP712Domain {
         string name;
@@ -48,6 +50,9 @@ contract Avaldao is AragonApp, Constants {
     AvalLib.Data avalData;
     ExchangeRateProvider public exchangeRateProvider;
     Vault public vault;
+
+    /// @dev Almacena los tokens permitidos para reunir fondos de garantía.
+    address[] tokens;
 
     /**
      * @notice Inicializa el Avaldao App con el Vault `_vault`.
@@ -120,7 +125,7 @@ contract Avaldao is AragonApp, Constants {
         uint8[] _signV,
         bytes32[] _signR,
         bytes32[] _signS
-    ) public {
+    ) external {
         AvalLib.Aval storage aval = _getAval(_id);
 
         // El aval solo puede firmarse por Avaldao.
@@ -199,8 +204,60 @@ contract Avaldao is AragonApp, Constants {
         emit SignAval(_id);
     }
 
+    /**
+     * @notice Obtiene el monto disponible en moneda FIAT del fondo de garantía.
+     */
+    function getAvailableFiatFund() external view returns (uint256) {
+        uint256 availableFiatFund = 0;
+        for (uint256 i = 0; i < tokens.length; i++) {
+            address token = tokens[i];
+            uint256 tokenRate = exchangeRateProvider.getExchangeRate(token);
+            if (token == ETH) {
+                // ETH Token
+                uint256 ethBalance = address(vault).balance;
+                availableFiatFund = availableFiatFund.add(ethBalance.div(tokenRate));
+            } else {
+                // ERC20 Token
+                uint256 tokenBalance = ERC20(token).balanceOf(address(vault));
+                availableFiatFund = availableFiatFund.add(tokenBalance.div(tokenRate));
+            }
+        }
+        return availableFiatFund;
+    }
+
+    /**
+     * @notice Habilita el token `_token` como fondo de garantía.
+     * @param _token token habilitado como fondo de garantía.
+     */
+    function enableToken(address _token) external auth(ENABLE_TOKEN_ROLE) {
+        if (isTokenEnabled(_token)) {
+            // El token ya se encuentra habilitado.
+            return;
+        }
+        tokens.push(_token);
+    }
+
+    /**
+     * @notice Determina si token `_token` está habilitado como fondo de garantía.
+     * @param _token Token a determinar si está habilitado o no.
+     * @return true si está habilitado. false si no está habilitado.
+     */
+    function isTokenEnabled(address _token) public returns (bool isEnabled) {
+        isEnabled = false;
+        for (uint256 i = 0; i < tokens.length; i++) {
+            if (tokens[i] == _token) {
+                // El token está habilitado.
+                isEnabled = true;
+                break;
+            }
+        }
+    }
+
+    /**
+     * @notice Setea el Exchange Rate Provider.
+     */
     function setExchangeRateProvider(ExchangeRateProvider _exchangeRateProvider)
-        public
+        external
         auth(SET_EXCHANGE_RATE_PROVIDER)
     {
         exchangeRateProvider = _exchangeRateProvider;
