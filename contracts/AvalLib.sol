@@ -24,6 +24,8 @@ library AvalLib {
         address solicitante;
         address comerciante;
         address avalado;
+        uint256 monto; // Monto en moneda FIAT requerido para el aval, medido en centavos de USD.
+        uint256 cuotasCantidad; // Cantidad de cuotas del aval.
         uint256[] cuotaIds; // Ids de las cuotas relacionadas.
         uint256[] reclamoIds; // Ids de los reclamos relacionados.
         Status status;
@@ -46,7 +48,9 @@ library AvalLib {
         address _avaldao,
         address _solicitante,
         address _comerciante,
-        address _avalado
+        address _avalado,
+        uint256 _monto,
+        uint256 _cuotasCantidad
     ) public {
         Aval storage aval = self.avales[_id];
         if (
@@ -64,6 +68,8 @@ library AvalLib {
             newAval.solicitante = _solicitante;
             newAval.comerciante = _comerciante;
             newAval.avalado = _avalado;
+            newAval.monto = _monto;
+            newAval.cuotasCantidad = _cuotasCantidad;
             newAval.status = Status.Completado;
             self.avales[_id] = newAval;
         } else {
@@ -73,6 +79,8 @@ library AvalLib {
             aval.solicitante = _solicitante;
             aval.comerciante = _comerciante;
             aval.avalado = _avalado;
+            aval.monto = _monto;
+            aval.cuotasCantidad = _cuotasCantidad;
         }
     }
 

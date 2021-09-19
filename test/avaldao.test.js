@@ -77,7 +77,7 @@ contract('Avaldao App', (accounts) => {
             await createPermission(acl, deployerAddress, avaldao.address, SET_EXCHANGE_RATE_PROVIDER, deployerAddress);
             await createPermission(acl, deployerAddress, avaldao.address, ENABLE_TOKEN_ROLE, deployerAddress);
             await createPermission(acl, solicitanteAddress, avaldao.address, CREATE_AVAL_ROLE, deployerAddress);
-            
+
             // Inicialización
             await vault.initialize()
             await avaldao.initialize(vault.address, VERSION, CHAIN_ID, avaldaoContractAddress);
@@ -120,8 +120,21 @@ contract('Avaldao App', (accounts) => {
         it('Creación de Aval', async () => {
 
             const avalId = '6130197bf45de20013f29190';
+            const monto = 10000;
+            const cuotasCantidad = 6;
 
-            let receipt = await avaldao.saveAval(avalId, INFO_CID, avaldaoAddress, comercianteAddress, avaladoAddress, { from: solicitanteAddress });
+            let receipt = await avaldao.saveAval(
+                avalId,
+                INFO_CID,
+                avaldaoAddress,
+                comercianteAddress,
+                avaladoAddress,
+                monto,
+                cuotasCantidad,
+                {
+                    from: solicitanteAddress
+                }
+            );
 
             let avalEventId = getEventArgument(receipt, 'SaveAval', 'id');
             assert.equal(avalEventId, avalId);
@@ -136,6 +149,8 @@ contract('Avaldao App', (accounts) => {
                 solicitante: solicitanteAddress,
                 comerciante: comercianteAddress,
                 avalado: avaladoAddress,
+                monto: monto,
+                cuotasCantidad: cuotasCantidad,
                 status: AVAL_STATUS_COMPLETADO
             });
         });
@@ -143,26 +158,56 @@ contract('Avaldao App', (accounts) => {
         it('Creación de Aval no autorizado', async () => {
 
             const avalId = '613147122919060012190e66';
-
+            const monto = 10000;
+            const cuotasCantidad = 6;
+            
             await assertRevert(avaldao.saveAval(
                 avalId,
                 INFO_CID,
                 avaldaoAddress,
                 comercianteAddress,
                 avaladoAddress,
-                { from: notAuthorized }
+                monto,
+                cuotasCantidad,
+                {
+                    from: notAuthorized
+                }
             ), errors.APP_AUTH_FAILED)
         });
 
         it('Edición de Aval', async () => {
 
             const avalId = '613166ebcccc9e0012c4229b';
+            const monto = 10000;
+            const cuotasCantidad = 6;
 
-            let receipt = await avaldao.saveAval(avalId, INFO_CID, avaldaoAddress, comercianteAddress, avaladoAddress, { from: solicitanteAddress });
+            let receipt = await avaldao.saveAval(
+                avalId,
+                INFO_CID,
+                avaldaoAddress,
+                comercianteAddress,
+                avaladoAddress,
+                monto,
+                cuotasCantidad,
+                {
+                    from: solicitanteAddress
+                }
+            );
             const avalEventId = getEventArgument(receipt, 'SaveAval', 'id');
 
             const NEW_INFO_CID = "b4B1A3935bF977bad5Ec753325B4CD8D889EF0e7e7c7424";
-            const receiptUpdated = await avaldao.saveAval(avalEventId, NEW_INFO_CID, avaldaoAddress, comercianteAddress, avaladoAddress, { from: solicitanteAddress });
+            const receiptUpdated = await avaldao.saveAval(
+                avalEventId,
+                NEW_INFO_CID,
+                avaldaoAddress,
+                comercianteAddress,
+                avaladoAddress,
+                monto,
+                cuotasCantidad,
+                {
+                    from: solicitanteAddress
+                }
+            );
             const updatedAvalEventId = getEventArgument(receiptUpdated, 'SaveAval', 'id');
 
             assert.equal(avalEventId, updatedAvalEventId);
@@ -176,6 +221,8 @@ contract('Avaldao App', (accounts) => {
                 solicitante: solicitanteAddress,
                 comerciante: comercianteAddress,
                 avalado: avaladoAddress,
+                monto: monto,
+                cuotasCantidad: cuotasCantidad,
                 status: AVAL_STATUS_COMPLETADO
             });
         });
@@ -183,14 +230,38 @@ contract('Avaldao App', (accounts) => {
         it('Edición de Aval no autorizado', async () => {
 
             const avalId = '61316fa69a53310013d86292';
+            const monto = 10000;
+            const cuotasCantidad = 6;
 
-            let receipt = await avaldao.saveAval(avalId, INFO_CID, avaldaoAddress, comercianteAddress, avaladoAddress, { from: solicitanteAddress });
+            let receipt = await avaldao.saveAval(
+                avalId,
+                INFO_CID,
+                avaldaoAddress,
+                comercianteAddress,
+                avaladoAddress,
+                monto,
+                cuotasCantidad,
+                {
+                    from: solicitanteAddress
+                }
+            );
             const avalEventId = getEventArgument(receipt, 'SaveAval', 'id');
 
             const NEW_INFO_CID = "b4B1A3935bF977bad5Ec753325B4CD8D889EF0e7e7c7424";
 
             await assertRevert(
-                avaldao.saveAval(avalEventId, NEW_INFO_CID, avaldaoAddress, comercianteAddress, avaladoAddress, { from: notAuthorized }),
+                avaldao.saveAval(
+                    avalEventId,
+                    NEW_INFO_CID,
+                    avaldaoAddress,
+                    comercianteAddress,
+                    avaladoAddress,
+                    monto,
+                    cuotasCantidad,
+                    {
+                        from: notAuthorized
+                    }
+                ),
                 errors.APP_AUTH_FAILED
             );
         });
@@ -261,7 +332,7 @@ contract('Avaldao App', (accounts) => {
         it('Fondo de garantía cero', async () => {
 
             const availableFiatFundExpected = new BN('0');
-            const availableFiatFund = await avaldao.getAvailableFiatFund({ from: solicitanteAddress });
+            const availableFiatFund = await avaldao.getAvailableFiatFund();
 
             assert.equal(availableFiatFund.toString(), availableFiatFundExpected.toString());
         });

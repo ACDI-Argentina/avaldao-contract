@@ -89,16 +89,20 @@ contract Avaldao is AragonApp, Constants {
      * @notice Crea o actualiza un aval. Quien envía la transacción es el solicitante del aval.
      * @param _id identificador del aval.
      * @param _infoCid Content ID de las información (JSON) del aval. IPFS Cid.
-     * @param _avaldao address de Avaldao
-     * @param _comerciante address del Comerciante
-     * @param _avalado address del Avalado
+     * @param _avaldao address de Avaldao.
+     * @param _comerciante address del Comerciante.
+     * @param _avalado address del Avalado.
+     * @param _monto monto FIAT requerido para el aval, medidio en centavos de USD.
+     * @param _cuotasCantidad cantidad de cuotas del aval.
      */
     function saveAval(
         string _id,
         string _infoCid,
         address _avaldao,
         address _comerciante,
-        address _avalado
+        address _avalado,
+        uint256 _monto,
+        uint256 _cuotasCantidad
     ) external auth(CREATE_AVAL_ROLE) {
         avalData.save(
             _id,
@@ -106,7 +110,9 @@ contract Avaldao is AragonApp, Constants {
             _avaldao,
             msg.sender,
             _comerciante,
-            _avalado
+            _avalado,
+            _monto,
+            _cuotasCantidad
         );
         emit SaveAval(_id);
     }
@@ -135,6 +141,12 @@ contract Avaldao is AragonApp, Constants {
         require(
             aval.status == AvalLib.Status.Completado,
             ERROR_AVAL_NO_COMPLETADO
+        );
+
+        // Debe haber fondos suficientes para garantizar el aval.
+        require(
+            aval.monto <= getAvailableFiatFund(),
+            ERROR_AVAL_FONDOS_INSUFICIENTES
         );
 
         // Verifica que estén las firmas de todos lo firmantes.
@@ -207,7 +219,7 @@ contract Avaldao is AragonApp, Constants {
     /**
      * @notice Obtiene el monto disponible en moneda FIAT del fondo de garantía.
      */
-    function getAvailableFiatFund() external view returns (uint256) {
+    function getAvailableFiatFund() public view returns (uint256) {
         uint256 availableFiatFund = 0;
         for (uint256 i = 0; i < tokens.length; i++) {
             address token = tokens[i];
@@ -215,11 +227,15 @@ contract Avaldao is AragonApp, Constants {
             if (token == ETH) {
                 // ETH Token
                 uint256 ethBalance = address(vault).balance;
-                availableFiatFund = availableFiatFund.add(ethBalance.div(tokenRate));
+                availableFiatFund = availableFiatFund.add(
+                    ethBalance.div(tokenRate)
+                );
             } else {
                 // ERC20 Token
                 uint256 tokenBalance = ERC20(token).balanceOf(address(vault));
-                availableFiatFund = availableFiatFund.add(tokenBalance.div(tokenRate));
+                availableFiatFund = availableFiatFund.add(
+                    tokenBalance.div(tokenRate)
+                );
             }
         }
         return availableFiatFund;
@@ -287,6 +303,8 @@ contract Avaldao is AragonApp, Constants {
             address solicitante,
             address comerciante,
             address avalado,
+            uint256 monto,
+            uint256 cuotasCantidad,
             AvalLib.Status status
         )
     {
@@ -297,6 +315,8 @@ contract Avaldao is AragonApp, Constants {
         solicitante = aval.solicitante;
         comerciante = aval.comerciante;
         avalado = aval.avalado;
+        monto = aval.monto;
+        cuotasCantidad = aval.cuotasCantidad;
         status = aval.status;
     }
 

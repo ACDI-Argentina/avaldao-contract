@@ -206,7 +206,7 @@ module.exports = async ({ getNamedAccounts, deployments, getChainId }) => {
         await sleep();
     }
 
-    log(`   - ExchangeRateProvider: ${exchangeRateProviderAddress}.`);
+    log(`   - ExchangeRateProvider: ${exchangeRateProviderAddress}`);
     await avaldao.setExchangeRateProvider(exchangeRateProviderAddress, { from: deployer });
     await sleep();
 
