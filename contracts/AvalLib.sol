@@ -26,6 +26,7 @@ library AvalLib {
         address avalado;
         uint256 monto; // Monto en moneda FIAT requerido para el aval, medido en centavos de USD.
         uint256 cuotasCantidad; // Cantidad de cuotas del aval.
+        mapping(address => uint256) tokens; // Tokens bloqueados para el aval.
         uint256[] cuotaIds; // Ids de las cuotas relacionadas.
         uint256[] reclamoIds; // Ids de los reclamos relacionados.
         Status status;

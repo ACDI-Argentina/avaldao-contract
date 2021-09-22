@@ -145,7 +145,7 @@ contract Avaldao is AragonApp, Constants {
 
         // Debe haber fondos suficientes para garantizar el aval.
         require(
-            aval.monto <= getAvailableFiatFund(),
+            aval.monto <= getAvailableFundFiat(),
             ERROR_AVAL_FONDOS_INSUFICIENTES
         );
 
@@ -211,34 +211,65 @@ contract Avaldao is AragonApp, Constants {
             aval.avaldao
         );
 
-        // Se realizó la verificación de todas las firmas, por lo que el aval pasa a estado Vigente.
+        // Se realizó la verificación de todas las firmas, por lo que el aval pasa a estado Vigente
+        // y se bloquean los fondos en el aval.
         aval.status = AvalLib.Status.Vigente;
+
+        // Bloqueo de fondos. En este punto hay fondos suficientes.
+        uint256 montoBloqueado = 0;
+        for (uint256 i = 0; i < tokens.length; i++) {
+            if (montoBloqueado == aval.monto) {
+                // Se alcanzó el monto bloqueado para el aval.
+                break;
+            }
+            address token = tokens[i];
+            uint256 tokenRate = exchangeRateProvider.getExchangeRate(token);
+            if (token == ETH) {
+                // ETH Token
+                uint256 ethBalance = address(vault).balance;
+                uint256 ethBalanceFiat = ethBalance.div(tokenRate);
+                if (montoBloqueado.add(ethBalanceFiat) >= aval.monto) {
+                    // Con el balance del token se garantiza todo el fondo requerido.
+                    aval.tokens[token] = aval.monto.sub(montoBloqueado).mul(
+                        tokenRate
+                    );
+                    montoBloqueado = aval.monto;
+                } else {
+                    // Con el balance se garantiza una parte del fondo requerido.
+                    aval.tokens[token] = aval.monto.sub(montoBloqueado).mul(
+                        tokenRate
+                    );
+                }
+
+                availableFundFiat = availableFundFiat.add(
+                    ethBalance.div(tokenRate)
+                );
+            } else {
+                // ERC20 Token
+                uint256 tokenBalance = ERC20(token).balanceOf(address(vault));
+                availableFundFiat = availableFundFiat.add(
+                    tokenBalance.div(tokenRate)
+                );
+            }
+        }
+
         emit SignAval(_id);
     }
 
     /**
      * @notice Obtiene el monto disponible en moneda FIAT del fondo de garantía.
      */
-    function getAvailableFiatFund() public view returns (uint256) {
-        uint256 availableFiatFund = 0;
+    function getAvailableFundFiat() public view returns (uint256) {
+        uint256 availableFundFiat = 0;
         for (uint256 i = 0; i < tokens.length; i++) {
             address token = tokens[i];
+            uint256 tokenAvailableFund = getAvailableFundByToken(token);
             uint256 tokenRate = exchangeRateProvider.getExchangeRate(token);
-            if (token == ETH) {
-                // ETH Token
-                uint256 ethBalance = address(vault).balance;
-                availableFiatFund = availableFiatFund.add(
-                    ethBalance.div(tokenRate)
-                );
-            } else {
-                // ERC20 Token
-                uint256 tokenBalance = ERC20(token).balanceOf(address(vault));
-                availableFiatFund = availableFiatFund.add(
-                    tokenBalance.div(tokenRate)
-                );
-            }
+            availableFundFiat = availableFundFiat.add(
+                tokenAvailableFund.div(tokenRate)
+            );
         }
-        return availableFiatFund;
+        return availableFundFiat;
     }
 
     /**
@@ -324,6 +355,31 @@ contract Avaldao is AragonApp, Constants {
 
     function _getAval(string _id) private returns (AvalLib.Aval storage) {
         return avalData.getAval(_id);
+    }
+
+    /**
+     * @notice Obtiene el monto disponible del token en el fondo de garantía.
+     * @param _token token a partir del cual se obtiene el fondo de garantía disponible.
+     */
+    function _getAvailableFundByToken(address _token)
+        private
+        view
+        returns (uint256)
+    {
+        uint256 balance = 0;
+        if (_token == ETH) {
+            // ETH Token
+            balance = address(vault).balance;
+        } else {
+            // ERC20 Token
+            balance = ERC20(token).balanceOf(address(vault));
+        }
+        // Se resta del balance, los montos bloqueados en los avales.
+        for (uint256 i = 0; i < avalData.ids.length; i++) {
+            AvalLib.Aval storage aval = _getAval(avalData.ids[i]);
+            balance = balance - aval.tokens[_token];
+        }
+        return balance;
     }
 
     /**

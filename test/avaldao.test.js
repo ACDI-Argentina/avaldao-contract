@@ -331,10 +331,10 @@ contract('Avaldao App', (accounts) => {
 
         it('Fondo de garantía cero', async () => {
 
-            const availableFiatFundExpected = new BN('0');
-            const availableFiatFund = await avaldao.getAvailableFiatFund();
+            const availableFundFiatExpected = new BN('0');
+            const availableFundFiat = await avaldao.getAvailableFundFiat();
 
-            assert.equal(availableFiatFund.toString(), availableFiatFundExpected.toString());
+            assert.equal(availableFundFiat.toString(), availableFundFiatExpected.toString());
         });
     });
 })
