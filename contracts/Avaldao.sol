@@ -216,9 +216,9 @@ contract Avaldao is AragonApp, Constants {
         aval.status = AvalLib.Status.Vigente;
 
         // Bloqueo de fondos. En este punto hay fondos suficientes.
-        uint256 montoBloqueado = 0;
+        uint256 montoBloqueadoFiat = 0;
         for (uint256 i = 0; i < tokens.length; i++) {
-            if (montoBloqueado == aval.monto) {
+            if (montoBloqueadoFiat == aval.monto) {
                 // Se alcanzó el monto bloqueado para el aval.
                 break;
             }
@@ -228,17 +228,19 @@ contract Avaldao is AragonApp, Constants {
                 // ETH Token
                 uint256 ethBalance = address(vault).balance;
                 uint256 ethBalanceFiat = ethBalance.div(tokenRate);
-                if (montoBloqueado.add(ethBalanceFiat) >= aval.monto) {
+                if (montoBloqueadoFiat.add(ethBalanceFiat) >= aval.monto) {
                     // Con el balance del token se garantiza todo el fondo requerido.
-                    aval.tokens[token] = aval.monto.sub(montoBloqueado).mul(
-                        tokenRate
-                    );
-                    montoBloqueado = aval.monto;
+                    // Se obtiene la diferencia entre el monto objetivo
+                    // y el monto bloqueado hasta el momento.
+                    uint256 diffFiat = aval.monto.sub(montoBloqueado);
+                    aval.tokens[token] = diffFiat.mul(tokenRate);
+                    montoBloqueadoFiat = aval.monto;
                 } else {
                     // Con el balance se garantiza una parte del fondo requerido.
-                    aval.tokens[token] = aval.monto.sub(montoBloqueado).mul(
+                    aval.tokens[token] = aval.monto.sub(montoBloqueadoFiat).mul(
                         tokenRate
                     );
+                    montoBloqueadoFiat = aval.monto;
                 }
 
                 availableFundFiat = availableFundFiat.add(
