@@ -17,6 +17,7 @@ const newAvaldao = async (deployer) => {
 
 const getAvales = async (avaldao) => {
   let ids = await avaldao.getAvalIds();
+  console.log(ids);
   let avales = [];
   for (i = 0; i < ids.length; i++) {
     avales.push(await avaldao.getAval(ids[i]));

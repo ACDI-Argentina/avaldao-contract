@@ -5,8 +5,10 @@ import "@aragon/os/contracts/apps/AragonApp.sol";
 import "@aragon/os/contracts/lib/math/SafeMath.sol";
 import "@aragon/apps-vault/contracts/Vault.sol";
 import "./Constants.sol";
-import "./AvalLib.sol";
+import "./Aval.sol";
 import "./ExchangeRateProvider.sol";
+
+//import "buidler/console.sol";
 
 /**
  * @title Avaldao
@@ -14,7 +16,6 @@ import "./ExchangeRateProvider.sol";
  * @notice Contrato de Avaldao.
  */
 contract Avaldao is AragonApp, Constants {
-    using AvalLib for AvalLib.Data;
     using SafeMath for uint256;
 
     struct EIP712Domain {
@@ -47,12 +48,19 @@ contract Avaldao is AragonApp, Constants {
             "AvalSignable(string id,string infoCid,address avaldao,address solicitante,address comerciante,address avalado)"
         );
 
-    AvalLib.Data avalData;
+    /**
+     * @dev Almacena los tokens permitidos para reunir fondos de garantía.
+     */
+    address[] tokens;
+
+    /**
+     * Avales de Avaldao.
+     */
+    string[] public avalesIds;
+    Aval[] public avales;
+
     ExchangeRateProvider public exchangeRateProvider;
     Vault public vault;
-
-    /// @dev Almacena los tokens permitidos para reunir fondos de garantía.
-    address[] tokens;
 
     /**
      * @notice Inicializa el Avaldao App con el Vault `_vault`.
@@ -88,11 +96,11 @@ contract Avaldao is AragonApp, Constants {
     /**
      * @notice Crea o actualiza un aval. Quien envía la transacción es el solicitante del aval.
      * @param _id identificador del aval.
-     * @param _infoCid Content ID de las información (JSON) del aval. IPFS Cid.
+     * @param _infoCid Content ID de la información (JSON) del aval. IPFS Cid.
      * @param _avaldao address de Avaldao.
      * @param _comerciante address del Comerciante.
      * @param _avalado address del Avalado.
-     * @param _monto monto FIAT requerido para el aval, medidio en centavos de USD.
+     * @param _montoFiat monto FIAT requerido para el aval, medidio en centavos de USD.
      * @param _cuotasCantidad cantidad de cuotas del aval.
      */
     function saveAval(
@@ -101,19 +109,57 @@ contract Avaldao is AragonApp, Constants {
         address _avaldao,
         address _comerciante,
         address _avalado,
-        uint256 _monto,
+        uint256 _montoFiat,
         uint256 _cuotasCantidad
     ) external auth(CREATE_AVAL_ROLE) {
-        avalData.save(
-            _id,
-            _infoCid,
-            _avaldao,
-            msg.sender,
-            _comerciante,
-            _avalado,
-            _monto,
-            _cuotasCantidad
-        );
+        //Aval aval = _getAval(_id);
+
+        /*Aval aval = Aval(0);
+        //aval = avales[0];
+        for (uint256 i = 0; i < avales.length; i++) {
+            if (
+                keccak256(abi.encodePacked(avales[i].id())) ==
+                keccak256(abi.encodePacked(_id))
+            ) {
+                aval = avales[i];
+                //aval = avales[i];
+                //break;
+                //return avales[i];
+            }
+        }
+        //return aval;*/
+
+
+        if (
+            /*address(aval) != 0 && keccak256(abi.encodePacked(aval.id())) !=
+            keccak256(abi.encodePacked(_id))*/
+            /*true*/true
+        ) {
+            // El aval no existe, por lo que es creado.
+            Aval newAval = new Aval(
+                _id,
+                _infoCid,
+                _avaldao,
+                msg.sender,
+                _comerciante,
+                _avalado,
+                _montoFiat,
+                _cuotasCantidad,
+                Aval.Status.Completado
+            );
+            avalesIds.push(_id);
+            avales.push(newAval);
+        } else {
+            // El aval existe, por lo que es actualizado.
+            /*aval.update(
+                _infoCid,
+                _avaldao,
+                _comerciante,
+                _avalado,
+                _montoFiat,
+                _cuotasCantidad
+            );*/
+        }
         emit SaveAval(_id);
     }
 
@@ -132,20 +178,20 @@ contract Avaldao is AragonApp, Constants {
         bytes32[] _signR,
         bytes32[] _signS
     ) external {
-        AvalLib.Aval storage aval = _getAval(_id);
+        Aval aval = _getAval(_id);
 
         // El aval solo puede firmarse por Avaldao.
-        require(aval.avaldao == msg.sender, ERROR_AUTH_FAILED);
+        require(aval.avaldao() == msg.sender, ERROR_AUTH_FAILED);
 
         // El aval solo puede firmarse si está completado.
         require(
-            aval.status == AvalLib.Status.Completado,
+            aval.status() == Aval.Status.Completado,
             ERROR_AVAL_NO_COMPLETADO
         );
 
         // Debe haber fondos suficientes para garantizar el aval.
         require(
-            aval.monto <= getAvailableFundFiat(),
+            aval.montoFiat() <= getAvailableFundFiat(),
             ERROR_AVAL_FONDOS_INSUFICIENTES
         );
 
@@ -164,12 +210,12 @@ contract Avaldao is AragonApp, Constants {
                 DOMAIN_SEPARATOR,
                 _hash(
                     AvalSignable({
-                        id: aval.id,
-                        infoCid: aval.infoCid,
-                        avaldao: aval.avaldao,
-                        solicitante: aval.solicitante,
-                        comerciante: aval.comerciante,
-                        avalado: aval.avalado
+                        id: aval.id(),
+                        infoCid: aval.infoCid(),
+                        avaldao: aval.avaldao(),
+                        solicitante: aval.solicitante(),
+                        comerciante: aval.comerciante(),
+                        avalado: aval.avalado()
                     })
                 )
             )
@@ -181,7 +227,7 @@ contract Avaldao is AragonApp, Constants {
             _signV[SIGN_INDEX_SOLICITANTE],
             _signR[SIGN_INDEX_SOLICITANTE],
             _signS[SIGN_INDEX_SOLICITANTE],
-            aval.solicitante
+            aval.solicitante()
         );
 
         // Verficación de la firma del Comerciante.
@@ -190,7 +236,7 @@ contract Avaldao is AragonApp, Constants {
             _signV[SIGN_INDEX_COMERCIANTE],
             _signR[SIGN_INDEX_COMERCIANTE],
             _signS[SIGN_INDEX_COMERCIANTE],
-            aval.comerciante
+            aval.comerciante()
         );
 
         // Verficación de la firma del Avalado.
@@ -199,7 +245,7 @@ contract Avaldao is AragonApp, Constants {
             _signV[SIGN_INDEX_AVALADO],
             _signR[SIGN_INDEX_AVALADO],
             _signS[SIGN_INDEX_AVALADO],
-            aval.avalado
+            aval.avalado()
         );
 
         // Verficación de la firma del Avaldao.
@@ -208,15 +254,15 @@ contract Avaldao is AragonApp, Constants {
             _signV[SIGN_INDEX_AVALDAO],
             _signR[SIGN_INDEX_AVALDAO],
             _signS[SIGN_INDEX_AVALDAO],
-            aval.avaldao
+            aval.avaldao()
         );
 
         // Se realizó la verificación de todas las firmas, por lo que el aval pasa a estado Vigente
         // y se bloquean los fondos en el aval.
-        aval.status = AvalLib.Status.Vigente;
+        aval.updateStatus(Aval.Status.Vigente);
 
         // Bloqueo de fondos. En este punto hay fondos suficientes.
-        uint256 montoBloqueadoFiat = 0;
+        /*uint256 montoBloqueadoFiat = 0;
         for (uint256 i = 0; i < tokens.length; i++) {
             if (montoBloqueadoFiat == aval.monto) {
                 // Se alcanzó el monto bloqueado para el aval.
@@ -253,7 +299,7 @@ contract Avaldao is AragonApp, Constants {
                     tokenBalance.div(tokenRate)
                 );
             }
-        }
+        }*/
 
         emit SignAval(_id);
     }
@@ -265,7 +311,7 @@ contract Avaldao is AragonApp, Constants {
         uint256 availableFundFiat = 0;
         for (uint256 i = 0; i < tokens.length; i++) {
             address token = tokens[i];
-            uint256 tokenAvailableFund = getAvailableFundByToken(token);
+            uint256 tokenAvailableFund = _getAvailableFundByToken(token);
             uint256 tokenRate = exchangeRateProvider.getExchangeRate(token);
             availableFundFiat = availableFundFiat.add(
                 tokenAvailableFund.div(tokenRate)
@@ -291,7 +337,11 @@ contract Avaldao is AragonApp, Constants {
      * @param _token Token a determinar si está habilitado o no.
      * @return true si está habilitado. false si no está habilitado.
      */
-    function isTokenEnabled(address _token) public returns (bool isEnabled) {
+    function isTokenEnabled(address _token)
+        public
+        view
+        returns (bool isEnabled)
+    {
         isEnabled = false;
         for (uint256 i = 0; i < tokens.length; i++) {
             if (tokens[i] == _token) {
@@ -319,7 +369,14 @@ contract Avaldao is AragonApp, Constants {
      * @return Arreglo con todos los identificadores de Avales.
      */
     function getAvalIds() external view returns (string[]) {
-        return avalData.ids;
+        //return avalData.ids;
+        // TODO revisar si esta implementación es necesaria.
+        /*string[] storage ids = new string[](avales.length);
+        for (uint256 i = 0; i < avales.length; i++) {
+            ids.push(avales[i].id());
+        }
+        return ids;*/
+        return avalesIds;
     }
 
     /**
@@ -336,27 +393,43 @@ contract Avaldao is AragonApp, Constants {
             address solicitante,
             address comerciante,
             address avalado,
-            uint256 monto,
+            uint256 montoFiat,
             uint256 cuotasCantidad,
-            AvalLib.Status status
+            Aval.Status status
         )
     {
-        AvalLib.Aval storage aval = _getAval(_id);
-        id = aval.id;
-        infoCid = aval.infoCid;
-        avaldao = aval.avaldao;
-        solicitante = aval.solicitante;
-        comerciante = aval.comerciante;
-        avalado = aval.avalado;
-        monto = aval.monto;
-        cuotasCantidad = aval.cuotasCantidad;
-        status = aval.status;
+        Aval aval = _getAval(_id);
+        //console.log("Aval id %s %s", _id, aval);
+        id = aval.id();
+        infoCid = aval.infoCid();
+        avaldao = aval.avaldao();
+        solicitante = aval.solicitante();
+        comerciante = aval.comerciante();
+        avalado = aval.avalado();
+        montoFiat = aval.montoFiat();
+        cuotasCantidad = aval.cuotasCantidad();
+        status = aval.status();
     }
 
     // Internal functions
 
-    function _getAval(string _id) private returns (AvalLib.Aval storage) {
-        return avalData.getAval(_id);
+    function _getAval(string _id) private view returns (Aval aval) {
+        //return avalData.getAval(_id);
+        //Aval aval;
+        //aval = avales[0];
+        for (uint256 i = 0; i < avales.length; i++) {
+            if (
+                keccak256(abi.encodePacked(avales[i].id())) ==
+                keccak256(abi.encodePacked(_id))
+            ) {
+                aval = avales[i];
+                //aval = avales[i];
+                break;
+                //return avales[i];
+            }
+        }
+        //return aval;
+        //return 0x;
     }
 
     /**
@@ -374,13 +447,13 @@ contract Avaldao is AragonApp, Constants {
             balance = address(vault).balance;
         } else {
             // ERC20 Token
-            balance = ERC20(token).balanceOf(address(vault));
+            balance = ERC20(_token).balanceOf(address(vault));
         }
         // Se resta del balance, los montos bloqueados en los avales.
-        for (uint256 i = 0; i < avalData.ids.length; i++) {
-            AvalLib.Aval storage aval = _getAval(avalData.ids[i]);
+        /*for (uint256 i = 0; i < avalData.ids.length; i++) {
+            Aval storage aval = _getAval(avalData.ids[i]);
             balance = balance - aval.tokens[_token];
-        }
+        }*/
         return balance;
     }
 

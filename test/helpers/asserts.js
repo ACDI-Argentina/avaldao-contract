@@ -5,7 +5,7 @@ const assertAval = (aval, avalExpected) => {
   assert.equal(aval.solicitante, avalExpected.solicitante);
   assert.equal(aval.comerciante, avalExpected.comerciante);
   assert.equal(aval.avalado, avalExpected.avalado);
-  assert.equal(aval.monto, avalExpected.monto);
+  assert.equal(aval.montoFiat, avalExpected.montoFiat);
   assert.equal(aval.cuotasCantidad, avalExpected.cuotasCantidad);
   assert.equal(aval.status, avalExpected.status);
 }
