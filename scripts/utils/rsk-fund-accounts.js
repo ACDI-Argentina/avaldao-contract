@@ -1,6 +1,9 @@
 var Web3 = require('web3');
 var network = "http://localhost:4444";
 
+// Vault Contract
+var vaultAddress = '0x669E348cAd8aBeB10F489bF81c685f3eEA72798F';
+
 // USUARIOS
 
 // Avaldao
@@ -32,6 +35,14 @@ async function main() {
 
     var from = '0xCD2a3d9F938E13CD947Ec05AbC7FE734Df8DD826';
     var value = web3.utils.toWei('1');
+
+    // Vault
+    await web3.eth.sendTransaction({
+        from: from,
+        to: vaultAddress,
+        value: value
+    });
+    console.log('  - Transferencia de RBTC al Fondo de Garantía.');
 
     // Avaldao
     await web3.eth.sendTransaction({
@@ -107,6 +118,12 @@ async function main() {
     let docTokenAddress = '0xb2e09ab18a1792025D8505B5722E527d5e90c8e7';
     // Get ERC20 Token contract instance
     let docContract = new web3.eth.Contract(minAbi, docTokenAddress);
+
+    // Vault
+    await rifContract.methods.transfer(vaultAddress, value).send({ from: from });
+    console.log('  - Transferencia de RIF al Fondo de Garantía.');
+    await docContract.methods.transfer(vaultAddress, value).send({ from: from });
+    console.log('  - Transferencia de DOC al Fondo de Garantía.');
 
     // Avaldao
     await rifContract.methods.transfer(avaldaoAddress, value).send({ from: from });

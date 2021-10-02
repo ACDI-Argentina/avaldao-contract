@@ -8,8 +8,6 @@ import "./Constants.sol";
 import "./Aval.sol";
 import "./ExchangeRateProvider.sol";
 
-//import "buidler/console.sol";
-
 /**
  * @title Avaldao
  * @author ACDI
@@ -94,7 +92,7 @@ contract Avaldao is AragonApp, Constants {
     event SignAval(string id);
 
     /**
-     * @notice Crea o actualiza un aval. Quien envía la transacción es el solicitante del aval.
+     * @notice Crea un aval. Quien envía la transacción es el solicitante del aval.
      * @param _id identificador del aval.
      * @param _infoCid Content ID de la información (JSON) del aval. IPFS Cid.
      * @param _avaldao address de Avaldao.
@@ -112,54 +110,19 @@ contract Avaldao is AragonApp, Constants {
         uint256 _montoFiat,
         uint256 _cuotasCantidad
     ) external auth(CREATE_AVAL_ROLE) {
-        //Aval aval = _getAval(_id);
-
-        /*Aval aval = Aval(0);
-        //aval = avales[0];
-        for (uint256 i = 0; i < avales.length; i++) {
-            if (
-                keccak256(abi.encodePacked(avales[i].id())) ==
-                keccak256(abi.encodePacked(_id))
-            ) {
-                aval = avales[i];
-                //aval = avales[i];
-                //break;
-                //return avales[i];
-            }
-        }
-        //return aval;*/
-
-
-        if (
-            /*address(aval) != 0 && keccak256(abi.encodePacked(aval.id())) !=
-            keccak256(abi.encodePacked(_id))*/
-            /*true*/true
-        ) {
-            // El aval no existe, por lo que es creado.
-            Aval newAval = new Aval(
-                _id,
-                _infoCid,
-                _avaldao,
-                msg.sender,
-                _comerciante,
-                _avalado,
-                _montoFiat,
-                _cuotasCantidad,
-                Aval.Status.Completado
-            );
-            avalesIds.push(_id);
-            avales.push(newAval);
-        } else {
-            // El aval existe, por lo que es actualizado.
-            /*aval.update(
-                _infoCid,
-                _avaldao,
-                _comerciante,
-                _avalado,
-                _montoFiat,
-                _cuotasCantidad
-            );*/
-        }
+        Aval newAval = new Aval(
+            _id,
+            _infoCid,
+            _avaldao,
+            msg.sender,
+            _comerciante,
+            _avalado,
+            _montoFiat,
+            _cuotasCantidad,
+            Aval.Status.Completado
+        );
+        avalesIds.push(_id);
+        avales.push(newAval);
         emit SaveAval(_id);
     }
 
@@ -187,12 +150,6 @@ contract Avaldao is AragonApp, Constants {
         require(
             aval.status() == Aval.Status.Completado,
             ERROR_AVAL_NO_COMPLETADO
-        );
-
-        // Debe haber fondos suficientes para garantizar el aval.
-        require(
-            aval.montoFiat() <= getAvailableFundFiat(),
-            ERROR_AVAL_FONDOS_INSUFICIENTES
         );
 
         // Verifica que estén las firmas de todos lo firmantes.
@@ -257,49 +214,12 @@ contract Avaldao is AragonApp, Constants {
             aval.avaldao()
         );
 
-        // Se realizó la verificación de todas las firmas, por lo que el aval pasa a estado Vigente
-        // y se bloquean los fondos en el aval.
+        // Bloqueo de fondos.
+        _lockFund(aval);
+
+        // Se realizó la verificación de todas las firmas y se bloquearon los fondos
+        // por lo que el aval pasa a estado Vigente.
         aval.updateStatus(Aval.Status.Vigente);
-
-        // Bloqueo de fondos. En este punto hay fondos suficientes.
-        /*uint256 montoBloqueadoFiat = 0;
-        for (uint256 i = 0; i < tokens.length; i++) {
-            if (montoBloqueadoFiat == aval.monto) {
-                // Se alcanzó el monto bloqueado para el aval.
-                break;
-            }
-            address token = tokens[i];
-            uint256 tokenRate = exchangeRateProvider.getExchangeRate(token);
-            if (token == ETH) {
-                // ETH Token
-                uint256 ethBalance = address(vault).balance;
-                uint256 ethBalanceFiat = ethBalance.div(tokenRate);
-                if (montoBloqueadoFiat.add(ethBalanceFiat) >= aval.monto) {
-                    // Con el balance del token se garantiza todo el fondo requerido.
-                    // Se obtiene la diferencia entre el monto objetivo
-                    // y el monto bloqueado hasta el momento.
-                    uint256 diffFiat = aval.monto.sub(montoBloqueado);
-                    aval.tokens[token] = diffFiat.mul(tokenRate);
-                    montoBloqueadoFiat = aval.monto;
-                } else {
-                    // Con el balance se garantiza una parte del fondo requerido.
-                    aval.tokens[token] = aval.monto.sub(montoBloqueadoFiat).mul(
-                        tokenRate
-                    );
-                    montoBloqueadoFiat = aval.monto;
-                }
-
-                availableFundFiat = availableFundFiat.add(
-                    ethBalance.div(tokenRate)
-                );
-            } else {
-                // ERC20 Token
-                uint256 tokenBalance = ERC20(token).balanceOf(address(vault));
-                availableFundFiat = availableFundFiat.add(
-                    tokenBalance.div(tokenRate)
-                );
-            }
-        }*/
 
         emit SignAval(_id);
     }
@@ -369,13 +289,6 @@ contract Avaldao is AragonApp, Constants {
      * @return Arreglo con todos los identificadores de Avales.
      */
     function getAvalIds() external view returns (string[]) {
-        //return avalData.ids;
-        // TODO revisar si esta implementación es necesaria.
-        /*string[] storage ids = new string[](avales.length);
-        for (uint256 i = 0; i < avales.length; i++) {
-            ids.push(avales[i].id());
-        }
-        return ids;*/
         return avalesIds;
     }
 
@@ -399,7 +312,6 @@ contract Avaldao is AragonApp, Constants {
         )
     {
         Aval aval = _getAval(_id);
-        //console.log("Aval id %s %s", _id, aval);
         id = aval.id();
         infoCid = aval.infoCid();
         avaldao = aval.avaldao();
@@ -414,22 +326,15 @@ contract Avaldao is AragonApp, Constants {
     // Internal functions
 
     function _getAval(string _id) private view returns (Aval aval) {
-        //return avalData.getAval(_id);
-        //Aval aval;
-        //aval = avales[0];
         for (uint256 i = 0; i < avales.length; i++) {
             if (
                 keccak256(abi.encodePacked(avales[i].id())) ==
                 keccak256(abi.encodePacked(_id))
             ) {
                 aval = avales[i];
-                //aval = avales[i];
                 break;
-                //return avales[i];
             }
         }
-        //return aval;
-        //return 0x;
     }
 
     /**
@@ -441,20 +346,7 @@ contract Avaldao is AragonApp, Constants {
         view
         returns (uint256)
     {
-        uint256 balance = 0;
-        if (_token == ETH) {
-            // ETH Token
-            balance = address(vault).balance;
-        } else {
-            // ERC20 Token
-            balance = ERC20(_token).balanceOf(address(vault));
-        }
-        // Se resta del balance, los montos bloqueados en los avales.
-        /*for (uint256 i = 0; i < avalData.ids.length; i++) {
-            Aval storage aval = _getAval(avalData.ids[i]);
-            balance = balance - aval.tokens[_token];
-        }*/
-        return balance;
+        return vault.balance(_token);
     }
 
     /**
@@ -510,5 +402,50 @@ contract Avaldao is AragonApp, Constants {
                     avalSignable.avalado
                 )
             );
+    }
+
+    /**
+     * @notice bloquea fondos desde el fondo de garantía en el aval especificado.
+     *
+     * @param aval donde se bloquean los fondos.
+     */
+    function _lockFund(Aval aval) internal {
+        // Debe haber fondos suficientes para garantizar el aval.
+        require(
+            aval.montoFiat() <= getAvailableFundFiat(),
+            ERROR_AVAL_FONDOS_INSUFICIENTES
+        );
+
+        uint256 montoFiatLock = 0;
+        for (uint256 i = 0; i < tokens.length; i++) {
+            if (montoFiatLock >= aval.montoFiat()) {
+                // Se alcanzó el monto bloqueado para el aval.
+                break;
+            }
+            address token = tokens[i];
+            uint256 tokenRate = exchangeRateProvider.getExchangeRate(token);
+            uint256 tokenBalance = _getAvailableFundByToken(token);
+            uint256 tokenBalanceFiat = tokenBalance.div(tokenRate);
+            uint256 tokenBalanceToTransfer;
+
+            if (montoFiatLock.add(tokenBalanceFiat) < aval.montoFiat()) {
+                // Con el balance se garantiza una parte del fondo requerido.
+                // Se transfiere todo el balance.
+                tokenBalanceToTransfer = tokenBalance;
+                montoFiatLock = montoFiatLock.add(tokenBalanceFiat);
+            } else {
+                // Con el balance del token se garantiza el fondo requerido.
+                // Se obtiene la diferencia entre el monto objetivo
+                // y el monto bloqueado hasta el momento.
+                uint256 montoFiatDiff = aval.montoFiat().sub(montoFiatLock);
+                // Se transfiere solo el balance necesario para llegar al objetivo.
+                tokenBalanceToTransfer = montoFiatDiff.mul(tokenRate);
+                // Se alcanzó el monto objetivo.
+                montoFiatLock = montoFiatLock.add(montoFiatDiff);
+            }
+
+            // Se transfiere el balance bloqueado desde el Vault hacia el Aval.
+            vault.transfer(token, address(aval), tokenBalanceToTransfer);
+        }
     }
 }

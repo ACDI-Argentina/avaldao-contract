@@ -4,7 +4,6 @@ const Kernel = artifacts.require('@aragon/os/build/contracts/kernel/Kernel')
 const ACL = artifacts.require('@aragon/os/build/contracts/acl/ACL')
 
 const Avaldao = artifacts.require('Avaldao')
-const AvalLib = artifacts.require('AvalLib')
 const Vault = artifacts.require('Vault')
 const MoCStateMock = artifacts.require('MoCStateMock');
 const RoCStateMock = artifacts.require('RoCStateMock');
@@ -62,14 +61,6 @@ module.exports = async ({ getNamedAccounts, deployments, getChainId }) => {
     await sleep();
 
     log(`Avaldao deploy`);
-
-    log(` - Libraries`);
-
-    // Link Avaldao > AvalLib
-    const avalLib = await AvalLib.new({ from: deployer });
-    await linkLib(avalLib, Avaldao, AVAL_LIB_PLACEHOLDER);
-    log(`   - Aval Lib: ${avalLib.address}`);
-    await sleep();
 
     const avaldaoBase = await Avaldao.new({ from: deployer });
     log(` - Avaldao Base: ${avaldaoBase.address}`);

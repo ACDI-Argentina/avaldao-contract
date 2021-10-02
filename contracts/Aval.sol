@@ -1,6 +1,7 @@
 pragma solidity ^0.4.24;
 
 import "./Constants.sol";
+import "@aragon/os/contracts/lib/math/SafeMath.sol";
 
 /**
  * @title Contrato de Aval
@@ -8,6 +9,7 @@ import "./Constants.sol";
  * @notice Contrato de Aval.
  */
 contract Aval is Constants {
+    using SafeMath for uint256;
     enum Status {
         Solicitado,
         Rechazado,
@@ -16,6 +18,11 @@ contract Aval is Constants {
         Vigente,
         Finalizado
     }
+
+    /**
+     * Dirección de Avaldao Contract.
+     */
+    address public avaldaoContract;
 
     string public id; // Identificación del aval
     string public infoCid; // IPFS Content ID de las información (JSON) del aval.
@@ -29,6 +36,17 @@ contract Aval is Constants {
     uint256[] public reclamoIds; // Ids de los reclamos relacionados.
     Status public status; // Estado del aval.
 
+    event Received(address, uint256);
+
+    /**
+     * @notice solo Avaldao Contract tiene acceso.
+     *
+     */
+    modifier onlyByAvaldaoContract() {
+        require(msg.sender == avaldaoContract, ERROR_AUTH_FAILED);
+        _;
+    }
+
     /**
      * @notice Crea un nuevo Contrato de Aval.
      * @param _id identificador del aval.
@@ -38,7 +56,7 @@ contract Aval is Constants {
      * @param _avalado address del Avalado.
      * @param _montoFiat monto FIAT requerido para el aval, medidio en centavos de USD.
      * @param _cuotasCantidad cantidad de cuotas del aval.
-     * @param _status estado del aval. 
+     * @param _status estado del aval.
      */
     constructor(
         string _id,
@@ -51,6 +69,7 @@ contract Aval is Constants {
         uint256 _cuotasCantidad,
         Status _status
     ) {
+        avaldaoContract = msg.sender; // Avaldao Contract.
         id = _id;
         infoCid = _infoCid;
         avaldao = _avaldao;
@@ -78,9 +97,7 @@ contract Aval is Constants {
         address _avalado,
         uint256 _montoFiat,
         uint256 _cuotasCantidad
-    ) external {
-        // El aval solo puede modificarse por el solicitante.
-        require(solicitante == msg.sender, ERROR_AUTH_FAILED);
+    ) external onlyByAvaldaoContract {
         infoCid = _infoCid;
         avaldao = _avaldao;
         comerciante = _comerciante;
@@ -90,15 +107,17 @@ contract Aval is Constants {
     }
 
     /**
-     * @notice Actualiza el estado del aval. Solo el usuario Solicitante o Avaldao pueden actualizar el estado del aval.
+     * @notice Actualiza el estado del aval.
      * @param _status nuevo estado del aval.
      */
-    function updateStatus(Status _status) external {
-        // El estado del aval solo puede modificarse por el Solicitante o Avaldao.
-        require(
-            solicitante == msg.sender || avalado == msg.sender,
-            ERROR_AUTH_FAILED
-        );
+    function updateStatus(Status _status) external onlyByAvaldaoContract {
         status = _status;
+    }
+
+    /**
+     * @dev Receive Ether Function.
+     */
+    function receive() external payable {
+        emit Received(msg.sender, msg.value);
     }
 }
