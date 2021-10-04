@@ -15,9 +15,6 @@ const BN = require('bn.js');
 const { newDao, newApp } = require('../scripts/dao')
 const { createPermission, grantPermission } = require('../scripts/permissions')
 
-const { linkLib,
-    AVAL_LIB_PLACEHOLDER } = require('../scripts/libs')
-
 const args = arg({ '--network': String }, process.argv);
 const network = args["--network"] || "rskRegtest";
 

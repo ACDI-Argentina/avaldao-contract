@@ -1,6 +1,8 @@
 var Web3 = require('web3');
 var network = "http://localhost:4444";
 
+var VaultJson = require('../../artifacts/Vault.json');
+
 // Vault Contract
 var vaultAddress = '0x669E348cAd8aBeB10F489bF81c685f3eEA72798F';
 
@@ -22,6 +24,8 @@ var comercianteAddress = '0x36d1d3c43422EF3B1d7d23F20a25977c29BC3f0e';
 var avaladoAddress = '0x9063541acBD959baeB6Bf64158944b7e5844534a';
 // - privateKey: 75953f08fb622421656e6d345ed618ba8b286f485c420bbca82c6ee611b2a1f7
 
+const RBTC = '0x0000000000000000000000000000000000000000';
+
 async function main() {
 
     console.log('');
@@ -37,11 +41,16 @@ async function main() {
     var value = web3.utils.toWei('1');
 
     // Vault
-    await web3.eth.sendTransaction({
+    var vault = new web3.eth.Contract(VaultJson.abi, vaultAddress);
+    await vault.methods.deposit(RBTC, value).send({
+        value: value,
+        from: from
+    });
+    /*await web3.eth.sendTransaction({
         from: from,
         to: vaultAddress,
         value: value
-    });
+    });*/
     console.log('  - Transferencia de RBTC al Fondo de Garantía.');
 
     // Avaldao
@@ -120,9 +129,17 @@ async function main() {
     let docContract = new web3.eth.Contract(minAbi, docTokenAddress);
 
     // Vault
-    await rifContract.methods.transfer(vaultAddress, value).send({ from: from });
+    //await rifContract.methods.transfer(vaultAddress, value).send({ from: from });
+    await vault.methods.deposit(rifTokenAddress, value).send({
+        value: value,
+        from: from
+    });
     console.log('  - Transferencia de RIF al Fondo de Garantía.');
-    await docContract.methods.transfer(vaultAddress, value).send({ from: from });
+    //await docContract.methods.transfer(vaultAddress, value).send({ from: from });
+    await vault.methods.deposit(docTokenAddress, value).send({
+        value: value,
+        from: from
+    });
     console.log('  - Transferencia de DOC al Fondo de Garantía.');
 
     // Avaldao

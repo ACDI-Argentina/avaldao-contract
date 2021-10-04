@@ -115,9 +115,9 @@ contract Aval is Constants {
     }
 
     /**
-     * @dev Receive Ether Function.
+     * @dev Fallback Function.
      */
-    function receive() external payable {
+    function() external payable {
         emit Received(msg.sender, msg.value);
     }
 }
