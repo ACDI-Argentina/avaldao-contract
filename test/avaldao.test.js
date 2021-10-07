@@ -120,8 +120,15 @@ contract('Avaldao App', (accounts) => {
         it('Creación de Aval', async () => {
 
             const avalId = '6130197bf45de20013f29190';
-            const montoFiat = 10000;
-            const cuotasCantidad = 6;
+            const montoFiat = 60000;
+            // Cuota 1: Vencimiento Thursday, July 1, 2021 12:00:00 AM / Desbloqueo Saturday, July 10, 2021 12:00:00 AM
+            // Cuota 2: Vencimiento Sunday, August 1, 2021 12:00:00 AM / Desbloqueo Tuesday, August 10, 2021 12:00:00 AM
+            // Cuota 3: Wednesday, September 1, 2021 12:00:00 AM / Desbloqueo Friday, September 10, 2021 12:00:00 AM
+            // Cuota 4: Vencimiento Friday, October 1, 2021 12:00:00 AM / Desbloqueo Sunday, October 10, 2021 12:00:00 AM
+            // Cuota 5: Vencimiento Monday, November 1, 2021 12:00:00 AM / Desbloqueo Wednesday, November 10, 2021 12:00:00 AM
+            // Cuota 6: Vencimiento Wednesday, December 1, 2021 12:00:00 AM / Desbloqueo Friday, December 10, 2021 12:00:00 AM
+            const cuotaVencimientoArr = [1625097600, 1627776000, 1630454400, 1633046400, 1635724800, 1638316800];
+            const cuotaDesbloqueoArr = [1625875200, 1628553600, 1631232000, 1633824000, 1636502400, 1639094400];
 
             let receipt = await avaldao.saveAval(
                 avalId,
@@ -130,7 +137,8 @@ contract('Avaldao App', (accounts) => {
                 comercianteAddress,
                 avaladoAddress,
                 montoFiat,
-                cuotasCantidad,
+                cuotaVencimientoArr,
+                cuotaDesbloqueoArr,
                 {
                     from: solicitanteAddress
                 }
@@ -153,7 +161,7 @@ contract('Avaldao App', (accounts) => {
                 comerciante: comercianteAddress,
                 avalado: avaladoAddress,
                 montoFiat: montoFiat,
-                cuotasCantidad: cuotasCantidad,
+                cuotasCantidad: cuotaVencimientoArr.length,
                 status: AVAL_STATUS_COMPLETADO
             });
         });
@@ -161,8 +169,16 @@ contract('Avaldao App', (accounts) => {
         it('Creación de Aval no autorizado', async () => {
 
             const avalId = '613147122919060012190e66';
-            const montoFiat = 10000;
-            const cuotasCantidad = 6;
+            const montoFiat = 60000;
+            // Cuota 1: Vencimiento Thursday, July 1, 2021 12:00:00 AM / Desbloqueo Saturday, July 10, 2021 12:00:00 AM
+            // Cuota 2: Vencimiento Sunday, August 1, 2021 12:00:00 AM / Desbloqueo Tuesday, August 10, 2021 12:00:00 AM
+            // Cuota 3: Wednesday, September 1, 2021 12:00:00 AM / Desbloqueo Friday, September 10, 2021 12:00:00 AM
+            // Cuota 4: Vencimiento Friday, October 1, 2021 12:00:00 AM / Desbloqueo Sunday, October 10, 2021 12:00:00 AM
+            // Cuota 5: Vencimiento Monday, November 1, 2021 12:00:00 AM / Desbloqueo Wednesday, November 10, 2021 12:00:00 AM
+            // Cuota 6: Vencimiento Wednesday, December 1, 2021 12:00:00 AM / Desbloqueo Friday, December 10, 2021 12:00:00 AM
+            const cuotaVencimientoArr = [1625097600, 1627776000, 1630454400, 1633046400, 1635724800, 1638316800];
+            const cuotaDesbloqueoArr = [1625875200, 1628553600, 1631232000, 1633824000, 1636502400, 1639094400];
+
             
             await assertRevert(avaldao.saveAval(
                 avalId,
@@ -171,7 +187,8 @@ contract('Avaldao App', (accounts) => {
                 comercianteAddress,
                 avaladoAddress,
                 montoFiat,
-                cuotasCantidad,
+                cuotaVencimientoArr,
+                cuotaDesbloqueoArr,
                 {
                     from: notAuthorized
                 }
@@ -181,8 +198,15 @@ contract('Avaldao App', (accounts) => {
         it.skip('Edición de Aval', async () => {
 
             const avalId = '613166ebcccc9e0012c4229b';
-            const montoFiat = 10000;
-            const cuotasCantidad = 6;
+            const montoFiat = 60000;
+            // Cuota 1: Vencimiento Thursday, July 1, 2021 12:00:00 AM / Desbloqueo Saturday, July 10, 2021 12:00:00 AM
+            // Cuota 2: Vencimiento Sunday, August 1, 2021 12:00:00 AM / Desbloqueo Tuesday, August 10, 2021 12:00:00 AM
+            // Cuota 3: Wednesday, September 1, 2021 12:00:00 AM / Desbloqueo Friday, September 10, 2021 12:00:00 AM
+            // Cuota 4: Vencimiento Friday, October 1, 2021 12:00:00 AM / Desbloqueo Sunday, October 10, 2021 12:00:00 AM
+            // Cuota 5: Vencimiento Monday, November 1, 2021 12:00:00 AM / Desbloqueo Wednesday, November 10, 2021 12:00:00 AM
+            // Cuota 6: Vencimiento Wednesday, December 1, 2021 12:00:00 AM / Desbloqueo Friday, December 10, 2021 12:00:00 AM
+            const cuotaVencimientoArr = [1625097600, 1627776000, 1630454400, 1633046400, 1635724800, 1638316800];
+            const cuotaDesbloqueoArr = [1625875200, 1628553600, 1631232000, 1633824000, 1636502400, 1639094400];
 
             let receipt = await avaldao.saveAval(
                 avalId,
@@ -191,7 +215,8 @@ contract('Avaldao App', (accounts) => {
                 comercianteAddress,
                 avaladoAddress,
                 montoFiat,
-                cuotasCantidad,
+                cuotaVencimientoArr,
+                cuotaDesbloqueoArr,
                 {
                     from: solicitanteAddress
                 }
@@ -206,7 +231,8 @@ contract('Avaldao App', (accounts) => {
                 comercianteAddress,
                 avaladoAddress,
                 montoFiat,
-                cuotasCantidad,
+                cuotaVencimientoArr,
+                cuotaDesbloqueoArr,
                 {
                     from: solicitanteAddress
                 }
@@ -225,7 +251,7 @@ contract('Avaldao App', (accounts) => {
                 comerciante: comercianteAddress,
                 avalado: avaladoAddress,
                 montoFiat: montoFiat,
-                cuotasCantidad: cuotasCantidad,
+                cuotasCantidad: cuotaVencimientoArr.length,
                 status: AVAL_STATUS_COMPLETADO
             });
         });
@@ -233,8 +259,16 @@ contract('Avaldao App', (accounts) => {
         it.skip('Edición de Aval no autorizado', async () => {
 
             const avalId = '61316fa69a53310013d86292';
-            const montoFiat = 10000;
-            const cuotasCantidad = 6;
+            const montoFiat = 60000;
+            // Cuota 1: Vencimiento Thursday, July 1, 2021 12:00:00 AM / Desbloqueo Saturday, July 10, 2021 12:00:00 AM
+            // Cuota 2: Vencimiento Sunday, August 1, 2021 12:00:00 AM / Desbloqueo Tuesday, August 10, 2021 12:00:00 AM
+            // Cuota 3: Wednesday, September 1, 2021 12:00:00 AM / Desbloqueo Friday, September 10, 2021 12:00:00 AM
+            // Cuota 4: Vencimiento Friday, October 1, 2021 12:00:00 AM / Desbloqueo Sunday, October 10, 2021 12:00:00 AM
+            // Cuota 5: Vencimiento Monday, November 1, 2021 12:00:00 AM / Desbloqueo Wednesday, November 10, 2021 12:00:00 AM
+            // Cuota 6: Vencimiento Wednesday, December 1, 2021 12:00:00 AM / Desbloqueo Friday, December 10, 2021 12:00:00 AM
+            const cuotaVencimientoArr = [1625097600, 1627776000, 1630454400, 1633046400, 1635724800, 1638316800];
+            const cuotaDesbloqueoArr = [1625875200, 1628553600, 1631232000, 1633824000, 1636502400, 1639094400];
+
 
             let receipt = await avaldao.saveAval(
                 avalId,
@@ -243,7 +277,8 @@ contract('Avaldao App', (accounts) => {
                 comercianteAddress,
                 avaladoAddress,
                 montoFiat,
-                cuotasCantidad,
+                cuotaVencimientoArr,
+                cuotaDesbloqueoArr,
                 {
                     from: solicitanteAddress
                 }
@@ -260,7 +295,8 @@ contract('Avaldao App', (accounts) => {
                     comercianteAddress,
                     avaladoAddress,
                     montoFiat,
-                    cuotasCantidad,
+                    cuotaVencimientoArr,
+                    cuotaDesbloqueoArr,
                     {
                         from: notAuthorized
                     }

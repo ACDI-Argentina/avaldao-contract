@@ -18,6 +18,20 @@ contract Aval is Constants {
         Vigente,
         Finalizado
     }
+    enum CuotaStatus {
+        Pendiente,
+        Pagada,
+        Reintegrada
+    }
+
+    /// @dev Estructura que define los datos de una Cuota.
+    struct Cuota {
+        uint256 numero; // Número de cuota.
+        uint256 montoFiat; // Monto de la cuota en moneda fiat;
+        uint256 timestampVencimiento; // Timestamp con la fecha de vencimiento de la cuota.
+        uint256 timestampDesbloqueo; // Timestamp con la fecha de desbloqueo de la cuota.
+        CuotaStatus status; // Estado de la cuota.
+    }
 
     /**
      * Dirección de Avaldao Contract.
@@ -32,7 +46,7 @@ contract Aval is Constants {
     address public avalado; // Dirección del usuario Avalado
     uint256 public montoFiat; // Monto en moneda FIAT requerido para el aval, medido en centavos de USD.
     uint256 public cuotasCantidad; // Cantidad de cuotas del aval.
-    uint256[] public cuotaIds; // Ids de las cuotas relacionadas.
+    Cuota[] public cuotas; // Cuotas del aval.
     uint256[] public reclamoIds; // Ids de los reclamos relacionados.
     Status public status; // Estado del aval.
 
@@ -48,37 +62,86 @@ contract Aval is Constants {
     }
 
     /**
-     * @notice Crea un nuevo Contrato de Aval.
+     * @notice Inicializa un nuevo Contrato de Aval.
      * @param _id identificador del aval.
      * @param _infoCid Content ID de la información (JSON) del aval. IPFS Cid.
-     * @param _avaldao address de Avaldao.
-     * @param _comerciante address del Comerciante.
-     * @param _avalado address del Avalado.
+     *
      * @param _montoFiat monto FIAT requerido para el aval, medidio en centavos de USD.
-     * @param _cuotasCantidad cantidad de cuotas del aval.
-     * @param _status estado del aval.
      */
     constructor(
         string _id,
         string _infoCid,
-        address _avaldao,
+        /*address _avaldao,
         address _solicitante,
         address _comerciante,
-        address _avalado,
-        uint256 _montoFiat,
-        uint256 _cuotasCantidad,
-        Status _status
+        address _avalado,*/
+        address[] _users,
+        uint256 _montoFiat
     ) {
         avaldaoContract = msg.sender; // Avaldao Contract.
         id = _id;
         infoCid = _infoCid;
-        avaldao = _avaldao;
-        solicitante = _solicitante;
-        comerciante = _comerciante;
-        avalado = _avalado;
+        avaldao = _users[0];
+        solicitante = _users[1];
+        comerciante = _users[2];
+        avalado = _users[3];
         montoFiat = _montoFiat;
-        cuotasCantidad = _cuotasCantidad;
-        status = _status;
+        status = Status.Completado;
+    }
+
+    /**
+     * @notice Inicializa un nuevo Contrato de Aval.
+     * @param _timestampVencimientoArr arreglo con las fechas de venicmiento de cada cuota.
+     * @param _timestampDesbloqueoArr arreglo con las fechas de desbloqueo de cada cuota.
+     */
+    /*function initializeCuotas(
+        bytes32[] _timestampVencimientoArr,
+        bytes32[] _timestampDesbloqueoArr
+    ) external onlyByAvaldaoContract {
+        // Verifica que se reciba la misma cantidad de fechas de venicmientos y desbloqueo de cuotas.
+        require(
+            _timestampVencimientoArr.length == _timestampDesbloqueoArr.length,
+            ERROR_CUOTAS_INVALIDAS
+        );
+
+        // El monto debe ser múltiplo de la cantidad de cuotas.
+        require(
+            montoFiat.mod(_timestampVencimientoArr.length) == 0,
+            ERROR_CUOTAS_INVALIDAS
+        );
+
+        // Establecimiento de cuotas.
+        cuotasCantidad = _timestampVencimientoArr.length;
+        uint256 montoFiatCuota = montoFiat.div(cuotasCantidad);
+        for (uint256 i = 0; i < cuotasCantidad; i++) {
+            Cuota memory cuota;
+            cuota.numero = i + 1;
+            cuota.montoFiat = montoFiatCuota;
+            cuota.timestampVencimiento = uint256(_timestampVencimientoArr[i]);
+            cuota.timestampDesbloqueo = uint256(_timestampDesbloqueoArr[i]);
+            cuota.status = CuotaStatus.Pendiente;
+            cuotas[i] = cuota;
+        }
+    }*/
+
+    /**
+     * @notice Inicializa un nuevo Contrato de Aval.
+     * @param _timestampVencimiento arreglo con las fechas de venicmiento de cada cuota.
+     * @param _timestampDesbloqueo arreglo con las fechas de desbloqueo de cada cuota.
+     */
+    function addCuota(
+        uint256 _montoFiat,
+        uint256 _timestampVencimiento,
+        uint256 _timestampDesbloqueo
+    ) external onlyByAvaldaoContract {
+        cuotasCantidad = cuotasCantidad + 1;
+        Cuota memory cuota;
+        cuota.numero = cuotasCantidad;
+        cuota.montoFiat = _montoFiat;
+        cuota.timestampVencimiento = _timestampVencimiento;
+        cuota.timestampDesbloqueo = _timestampDesbloqueo;
+        cuota.status = CuotaStatus.Pendiente;
+        cuotas.push(cuota);        
     }
 
     /**

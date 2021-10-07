@@ -93,36 +93,54 @@ contract Avaldao is AragonApp, Constants {
 
     /**
      * @notice Crea un aval. Quien envía la transacción es el solicitante del aval.
-     * @param _id identificador del aval.
-     * @param _infoCid Content ID de la información (JSON) del aval. IPFS Cid.
-     * @param _avaldao address de Avaldao.
-     * @param _comerciante address del Comerciante.
-     * @param _avalado address del Avalado.
-     * @param _montoFiat monto FIAT requerido para el aval, medidio en centavos de USD.
-     * @param _cuotasCantidad cantidad de cuotas del aval.
      */
     function saveAval(
         string _id,
         string _infoCid,
-        address _avaldao,
-        address _comerciante,
-        address _avalado,
+        address[] _users,
         uint256 _montoFiat,
-        uint256 _cuotasCantidad
+        bytes32[] _timestampVencimientoArr,
+        bytes32[] _timestampDesbloqueoArr
     ) external auth(CREATE_AVAL_ROLE) {
-        Aval newAval = new Aval(
-            _id,
-            _infoCid,
-            _avaldao,
-            msg.sender,
-            _comerciante,
-            _avalado,
-            _montoFiat,
-            _cuotasCantidad,
-            Aval.Status.Completado
+        // El sender debe ser el solicitante del aval.
+        require(_users[1] == msg.sender, ERROR_AUTH_FAILED);
+
+        // Verifica que se reciba la misma cantidad de fechas de venicmientos y desbloqueo de cuotas.
+        require(
+            _timestampVencimientoArr.length == _timestampDesbloqueoArr.length,
+            ERROR_CUOTAS_INVALIDAS
         );
+
+        // El monto debe ser múltiplo de la cantidad de cuotas.
+        require(
+            _montoFiat.mod(_timestampVencimientoArr.length) == 0,
+            ERROR_CUOTAS_INVALIDAS
+        );
+
+        // SI no se realiza este copiado, el smart contract no compila con el siguiente error.
+        // UnimplementedFeatureError: Only byte arrays can be encoded from calldata currently.
+        // Error BDLR600: Compilation failed
+        address[] memory users = _users;
+        //bytes32[] memory timestampVencimientoArr = _timestampVencimientoArr;
+        //bytes32[] memory timestampDesbloqueoArr = _timestampDesbloqueoArr;
+
+        Aval aval = new Aval(_id, _infoCid, users, _montoFiat);
+        //aval.initializeCuotas(timestampVencimientoArr, timestampDesbloqueoArr);
+
+        // Establecimiento de cuotas.
+        uint256 montoFiatCuota = _montoFiat.div(
+            _timestampVencimientoArr.length
+        );
+        for (uint8 i = 0; i < _timestampVencimientoArr.length; i++) {
+            aval.addCuota(
+                montoFiatCuota,
+                uint256(_timestampVencimientoArr[i]),
+                uint256(_timestampDesbloqueoArr[i])
+            );
+        }
+
         avalesIds.push(_id);
-        avales.push(newAval);
+        avales.push(aval);
         emit SaveAval(_id);
     }
 

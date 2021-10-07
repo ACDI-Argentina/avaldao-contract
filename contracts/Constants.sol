@@ -29,4 +29,6 @@ contract Constants is EtherTokenConstant {
         "AVALDAO_AVAL_FONDOS_INSUFICIENTES";
     string internal constant ERROR_AVAL_FALTAN_FIRMAS =
         "AVALDAO_AVAL_FALTAN_FIRMAS";
+    string internal constant ERROR_CUOTAS_INVALIDAS =
+        "AVALDAO_AVAL_CUOTAS_INVALIDAS";
 }
