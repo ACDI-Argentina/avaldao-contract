@@ -99,25 +99,16 @@ contract Avaldao is AragonApp, Constants {
         string _infoCid,
         address[] _users,
         uint256 _montoFiat,
-        bytes32[] _timestampVencimientoArr,
-        bytes32[] _timestampDesbloqueoArr
+        bytes32[] _timestampVencimientos
     ) external auth(CREATE_AVAL_ROLE) {
         // El sender debe ser el solicitante del aval.
         require(_users[1] == msg.sender, ERROR_AUTH_FAILED);
 
-        // Verifica que se reciba la misma cantidad de fechas de venicmientos y desbloqueo de cuotas.
-        require(
-            _timestampVencimientoArr.length == _timestampDesbloqueoArr.length,
-            ERROR_CUOTAS_INVALIDAS
-        );
-
+        uint256 cuotasCantidad = _timestampVencimientos.length.div(2);
         // El monto debe ser múltiplo de la cantidad de cuotas.
-        require(
-            _montoFiat.mod(_timestampVencimientoArr.length) == 0,
-            ERROR_CUOTAS_INVALIDAS
-        );
+        require(_montoFiat.mod(cuotasCantidad) == 0, ERROR_CUOTAS_INVALIDAS);
 
-        // SI no se realiza este copiado, el smart contract no compila con el siguiente error.
+        // Si no se realiza este copiado, el smart contract no compila con el siguiente error.
         // UnimplementedFeatureError: Only byte arrays can be encoded from calldata currently.
         // Error BDLR600: Compilation failed
         address[] memory users = _users;
@@ -128,14 +119,12 @@ contract Avaldao is AragonApp, Constants {
         //aval.initializeCuotas(timestampVencimientoArr, timestampDesbloqueoArr);
 
         // Establecimiento de cuotas.
-        uint256 montoFiatCuota = _montoFiat.div(
-            _timestampVencimientoArr.length
-        );
-        for (uint8 i = 0; i < _timestampVencimientoArr.length; i++) {
+        uint256 montoFiatCuota = _montoFiat.div(cuotasCantidad);
+        for (uint8 i = 0; i < cuotasCantidad; i++) {
             aval.addCuota(
                 montoFiatCuota,
-                uint256(_timestampVencimientoArr[i]),
-                uint256(_timestampDesbloqueoArr[i])
+                uint256(_timestampVencimientos[i * 2]),
+                uint256(_timestampVencimientos[i * 2 + 1])
             );
         }
 
