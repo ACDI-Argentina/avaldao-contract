@@ -99,7 +99,7 @@ contract Avaldao is AragonApp, Constants {
         string _infoCid,
         address[] _users,
         uint256 _montoFiat,
-        bytes32[] _timestampVencimientos
+        bytes4[] _timestampVencimientos
     ) external auth(CREATE_AVAL_ROLE) {
         // El sender debe ser el solicitante del aval.
         require(_users[1] == msg.sender, ERROR_AUTH_FAILED);
@@ -123,8 +123,8 @@ contract Avaldao is AragonApp, Constants {
         for (uint8 i = 0; i < cuotasCantidad; i++) {
             aval.addCuota(
                 montoFiatCuota,
-                uint256(_timestampVencimientos[i * 2]),
-                uint256(_timestampVencimientos[i * 2 + 1])
+                uint32(_timestampVencimientos[i * 2]),
+                uint32(_timestampVencimientos[i * 2 + 1])
             );
         }
 
@@ -328,6 +328,19 @@ contract Avaldao is AragonApp, Constants {
         montoFiat = aval.montoFiat();
         cuotasCantidad = aval.cuotasCantidad();
         status = aval.status();
+    }
+
+    /**
+     * @notice Obtiene el address del Aval cuyo identificador coincide con `_id`.
+     * @return Address del Aval.
+     */
+    function getAvalAddress(string _id)
+        external
+        view
+        returns (address avalAddress)
+    {
+        Aval aval = _getAval(_id);
+        avalAddress = address(aval);
     }
 
     // Internal functions

@@ -27,6 +27,9 @@ const web3 = require("web3")
 const AVAL_STATUS_COMPLETADO = 3;
 const AVAL_STATUS_VIGENTE = 4;
 
+// 0: CuotaStatus.Pendiente;
+const AVAL_CUOTA_STATUS_PENDIENTE = 0;
+
 const VERSION = '1';
 
 contract('Avaldao App', (accounts) => {
@@ -125,29 +128,68 @@ contract('Avaldao App', (accounts) => {
 
             const usersArr = [avaldaoAddress, solicitanteAddress, comercianteAddress, avaladoAddress];
 
-            const cuotaVencimientosArr = [];
             // Cuota 1: Vencimiento Thursday, July 1, 2021 12:00:00 AM / Desbloqueo Saturday, July 10, 2021 12:00:00 AM
-            cuotaVencimientosArr.push(web3.utils.numberToHex(1625097600));
-            cuotaVencimientosArr.push(web3.utils.numberToHex(1625875200));
+            const cuota1 = {
+                numero: 1,
+                montoFiat: 10000,
+                timestampVencimiento: 1625097600,
+                timestampDesbloqueo: 1625875200,
+                status: AVAL_CUOTA_STATUS_PENDIENTE
+            };
+
             // Cuota 2: Vencimiento Sunday, August 1, 2021 12:00:00 AM / Desbloqueo Tuesday, August 10, 2021 12:00:00 AM
-            cuotaVencimientosArr.push(web3.utils.numberToHex(1627776000));
-            cuotaVencimientosArr.push(web3.utils.numberToHex(1628553600));
+            const cuota2 = {
+                numero: 2,
+                montoFiat: 10000,
+                timestampVencimiento: 1627776000,
+                timestampDesbloqueo: 1628553600,
+                status: AVAL_CUOTA_STATUS_PENDIENTE
+            };
+
             // Cuota 3: Wednesday, September 1, 2021 12:00:00 AM / Desbloqueo Friday, September 10, 2021 12:00:00 AM
-            cuotaVencimientosArr.push(web3.utils.numberToHex(1630454400));
-            cuotaVencimientosArr.push(web3.utils.numberToHex(1631232000));
+            const cuota3 = {
+                numero: 3,
+                montoFiat: 10000,
+                timestampVencimiento: 1630454400,
+                timestampDesbloqueo: 1631232000,
+                status: AVAL_CUOTA_STATUS_PENDIENTE
+            };
+
             // Cuota 4: Vencimiento Friday, October 1, 2021 12:00:00 AM / Desbloqueo Sunday, October 10, 2021 12:00:00 AM
-            cuotaVencimientosArr.push(web3.utils.numberToHex(1633046400));
-            cuotaVencimientosArr.push(web3.utils.numberToHex(1633824000));
+            const cuota4 = {
+                numero: 4,
+                montoFiat: 10000,
+                timestampVencimiento: 1633046400,
+                timestampDesbloqueo: 1633824000,
+                status: AVAL_CUOTA_STATUS_PENDIENTE
+            };
+
             // Cuota 5: Vencimiento Monday, November 1, 2021 12:00:00 AM / Desbloqueo Wednesday, November 10, 2021 12:00:00 AM
-            cuotaVencimientosArr.push(web3.utils.numberToHex(1635724800));
-            cuotaVencimientosArr.push(web3.utils.numberToHex(1636502400));
+            const cuota5 = {
+                numero: 5,
+                montoFiat: 10000,
+                timestampVencimiento: 1635724800,
+                timestampDesbloqueo: 1636502400,
+                status: AVAL_CUOTA_STATUS_PENDIENTE
+            };
+
             // Cuota 6: Vencimiento Wednesday, December 1, 2021 12:00:00 AM / Desbloqueo Friday, December 10, 2021 12:00:00 AM
-            cuotaVencimientosArr.push(web3.utils.numberToHex(1638316800));
-            cuotaVencimientosArr.push(web3.utils.numberToHex(1639094400));
+            const cuota6 = {
+                numero: 6,
+                montoFiat: 10000,
+                timestampVencimiento: 1638316800,
+                timestampDesbloqueo: 1639094400,
+                status: AVAL_CUOTA_STATUS_PENDIENTE
+            };
 
-            // try {
+            const cuotas = [cuota1, cuota2, cuota3, cuota4, cuota5, cuota6];
 
-            // console.log(web3.utils.numberToHex('234'));
+            const cuotaVencimientosArr = [];
+            for (let i = 0; i < cuotas.length; i++) {
+                const cuota = cuotas[i];
+                cuotaVencimientosArr.push(web3.utils.numberToHex(cuota.timestampVencimiento));
+                cuotaVencimientosArr.push(web3.utils.numberToHex(cuota.timestampDesbloqueo));
+            }
 
             let receipt = await avaldao.saveAval(
                 avalId,
@@ -157,12 +199,8 @@ contract('Avaldao App', (accounts) => {
                 cuotaVencimientosArr,
                 { from: solicitanteAddress }
             );
-            /*   } catch (e) {
-                   console.error(e);
-               }*/
-            let avalEventId = getEventArgument(receipt, 'SaveAval', 'id');
 
-            console.log(`Aval ${avalEventId} creado.`);
+            let avalEventId = getEventArgument(receipt, 'SaveAval', 'id');
 
             assert.equal(avalEventId, avalId);
 
@@ -178,6 +216,7 @@ contract('Avaldao App', (accounts) => {
                 avalado: avaladoAddress,
                 montoFiat: montoFiat,
                 cuotasCantidad: cuotaVencimientosArr.length / 2,
+                cuotas: cuotas,
                 status: AVAL_STATUS_COMPLETADO
             });
         });
@@ -189,25 +228,68 @@ contract('Avaldao App', (accounts) => {
 
             const usersArr = [avaldaoAddress, solicitanteAddress, comercianteAddress, avaladoAddress];
 
-            const cuotaVencimientosArr = [];
             // Cuota 1: Vencimiento Thursday, July 1, 2021 12:00:00 AM / Desbloqueo Saturday, July 10, 2021 12:00:00 AM
-            cuotaVencimientosArr.push(web3.utils.numberToHex(1625097600));
-            cuotaVencimientosArr.push(web3.utils.numberToHex(1625875200));
+            const cuota1 = {
+                numero: 1,
+                montoFiat: 10000,
+                timestampVencimiento: 1625097600,
+                timestampDesbloqueo: 1625875200,
+                status: AVAL_CUOTA_STATUS_PENDIENTE
+            };
+
             // Cuota 2: Vencimiento Sunday, August 1, 2021 12:00:00 AM / Desbloqueo Tuesday, August 10, 2021 12:00:00 AM
-            cuotaVencimientosArr.push(web3.utils.numberToHex(1627776000));
-            cuotaVencimientosArr.push(web3.utils.numberToHex(1628553600));
+            const cuota2 = {
+                numero: 2,
+                montoFiat: 10000,
+                timestampVencimiento: 1627776000,
+                timestampDesbloqueo: 1628553600,
+                status: AVAL_CUOTA_STATUS_PENDIENTE
+            };
+
             // Cuota 3: Wednesday, September 1, 2021 12:00:00 AM / Desbloqueo Friday, September 10, 2021 12:00:00 AM
-            cuotaVencimientosArr.push(web3.utils.numberToHex(1630454400));
-            cuotaVencimientosArr.push(web3.utils.numberToHex(1631232000));
+            const cuota3 = {
+                numero: 3,
+                montoFiat: 10000,
+                timestampVencimiento: 1630454400,
+                timestampDesbloqueo: 1631232000,
+                status: AVAL_CUOTA_STATUS_PENDIENTE
+            };
+
             // Cuota 4: Vencimiento Friday, October 1, 2021 12:00:00 AM / Desbloqueo Sunday, October 10, 2021 12:00:00 AM
-            cuotaVencimientosArr.push(web3.utils.numberToHex(1633046400));
-            cuotaVencimientosArr.push(web3.utils.numberToHex(1633824000));
+            const cuota4 = {
+                numero: 4,
+                montoFiat: 10000,
+                timestampVencimiento: 1633046400,
+                timestampDesbloqueo: 1633824000,
+                status: AVAL_CUOTA_STATUS_PENDIENTE
+            };
+
             // Cuota 5: Vencimiento Monday, November 1, 2021 12:00:00 AM / Desbloqueo Wednesday, November 10, 2021 12:00:00 AM
-            cuotaVencimientosArr.push(web3.utils.numberToHex(1635724800));
-            cuotaVencimientosArr.push(web3.utils.numberToHex(1636502400));
+            const cuota5 = {
+                numero: 5,
+                montoFiat: 10000,
+                timestampVencimiento: 1635724800,
+                timestampDesbloqueo: 1636502400,
+                status: AVAL_CUOTA_STATUS_PENDIENTE
+            };
+
             // Cuota 6: Vencimiento Wednesday, December 1, 2021 12:00:00 AM / Desbloqueo Friday, December 10, 2021 12:00:00 AM
-            cuotaVencimientosArr.push(web3.utils.numberToHex(1638316800));
-            cuotaVencimientosArr.push(web3.utils.numberToHex(1639094400));
+            const cuota6 = {
+                numero: 6,
+                montoFiat: 10000,
+                timestampVencimiento: 1638316800,
+                timestampDesbloqueo: 1639094400,
+                status: AVAL_CUOTA_STATUS_PENDIENTE
+            };
+
+            const cuotas = [cuota1, cuota2, cuota3, cuota4, cuota5, cuota6];
+
+            const cuotaVencimientosArr = [];
+            for (let i = 0; i < cuotas.length; i++) {
+                const cuota = cuotas[i];
+                cuotaVencimientosArr.push(web3.utils.numberToHex(cuota.timestampVencimiento));
+                cuotaVencimientosArr.push(web3.utils.numberToHex(cuota.timestampDesbloqueo));
+            }
 
             await assertRevert(avaldao.saveAval(
                 avalId,
@@ -228,25 +310,68 @@ contract('Avaldao App', (accounts) => {
 
             const usersArr = [avaldaoAddress, solicitanteAddress, comercianteAddress, avaladoAddress];
 
-            const cuotaVencimientosArr = [];
             // Cuota 1: Vencimiento Thursday, July 1, 2021 12:00:00 AM / Desbloqueo Saturday, July 10, 2021 12:00:00 AM
-            cuotaVencimientosArr.push(web3.utils.numberToHex(1625097600));
-            cuotaVencimientosArr.push(web3.utils.numberToHex(1625875200));
+            const cuota1 = {
+                numero: 1,
+                montoFiat: 10000,
+                timestampVencimiento: 1625097600,
+                timestampDesbloqueo: 1625875200,
+                status: AVAL_CUOTA_STATUS_PENDIENTE
+            };
+
             // Cuota 2: Vencimiento Sunday, August 1, 2021 12:00:00 AM / Desbloqueo Tuesday, August 10, 2021 12:00:00 AM
-            cuotaVencimientosArr.push(web3.utils.numberToHex(1627776000));
-            cuotaVencimientosArr.push(web3.utils.numberToHex(1628553600));
+            const cuota2 = {
+                numero: 2,
+                montoFiat: 10000,
+                timestampVencimiento: 1627776000,
+                timestampDesbloqueo: 1628553600,
+                status: AVAL_CUOTA_STATUS_PENDIENTE
+            };
+
             // Cuota 3: Wednesday, September 1, 2021 12:00:00 AM / Desbloqueo Friday, September 10, 2021 12:00:00 AM
-            cuotaVencimientosArr.push(web3.utils.numberToHex(1630454400));
-            cuotaVencimientosArr.push(web3.utils.numberToHex(1631232000));
+            const cuota3 = {
+                numero: 3,
+                montoFiat: 10000,
+                timestampVencimiento: 1630454400,
+                timestampDesbloqueo: 1631232000,
+                status: AVAL_CUOTA_STATUS_PENDIENTE
+            };
+
             // Cuota 4: Vencimiento Friday, October 1, 2021 12:00:00 AM / Desbloqueo Sunday, October 10, 2021 12:00:00 AM
-            cuotaVencimientosArr.push(web3.utils.numberToHex(1633046400));
-            cuotaVencimientosArr.push(web3.utils.numberToHex(1633824000));
+            const cuota4 = {
+                numero: 4,
+                montoFiat: 10000,
+                timestampVencimiento: 1633046400,
+                timestampDesbloqueo: 1633824000,
+                status: AVAL_CUOTA_STATUS_PENDIENTE
+            };
+
             // Cuota 5: Vencimiento Monday, November 1, 2021 12:00:00 AM / Desbloqueo Wednesday, November 10, 2021 12:00:00 AM
-            cuotaVencimientosArr.push(web3.utils.numberToHex(1635724800));
-            cuotaVencimientosArr.push(web3.utils.numberToHex(1636502400));
+            const cuota5 = {
+                numero: 5,
+                montoFiat: 10000,
+                timestampVencimiento: 1635724800,
+                timestampDesbloqueo: 1636502400,
+                status: AVAL_CUOTA_STATUS_PENDIENTE
+            };
+
             // Cuota 6: Vencimiento Wednesday, December 1, 2021 12:00:00 AM / Desbloqueo Friday, December 10, 2021 12:00:00 AM
-            cuotaVencimientosArr.push(web3.utils.numberToHex(1638316800));
-            cuotaVencimientosArr.push(web3.utils.numberToHex(1639094400));
+            const cuota6 = {
+                numero: 6,
+                montoFiat: 10000,
+                timestampVencimiento: 1638316800,
+                timestampDesbloqueo: 1639094400,
+                status: AVAL_CUOTA_STATUS_PENDIENTE
+            };
+
+            const cuotas = [cuota1, cuota2, cuota3, cuota4, cuota5, cuota6];
+
+            const cuotaVencimientosArr = [];
+            for (let i = 0; i < cuotas.length; i++) {
+                const cuota = cuotas[i];
+                cuotaVencimientosArr.push(web3.utils.numberToHex(cuota.timestampVencimiento));
+                cuotaVencimientosArr.push(web3.utils.numberToHex(cuota.timestampDesbloqueo));
+            }
 
             let receipt = await avaldao.saveAval(
                 avalId,
@@ -286,6 +411,7 @@ contract('Avaldao App', (accounts) => {
                 avalado: avaladoAddress,
                 montoFiat: montoFiat,
                 cuotasCantidad: cuotaVencimientosArr.length / 2,
+                cuotas: cuotas,
                 status: AVAL_STATUS_COMPLETADO
             });
         });
@@ -297,25 +423,68 @@ contract('Avaldao App', (accounts) => {
 
             const usersArr = [avaldaoAddress, solicitanteAddress, comercianteAddress, avaladoAddress];
 
-            const cuotaVencimientosArr = [];
             // Cuota 1: Vencimiento Thursday, July 1, 2021 12:00:00 AM / Desbloqueo Saturday, July 10, 2021 12:00:00 AM
-            cuotaVencimientosArr.push(web3.utils.numberToHex(1625097600));
-            cuotaVencimientosArr.push(web3.utils.numberToHex(1625875200));
+            const cuota1 = {
+                numero: 1,
+                montoFiat: 10000,
+                timestampVencimiento: 1625097600,
+                timestampDesbloqueo: 1625875200,
+                status: AVAL_CUOTA_STATUS_PENDIENTE
+            };
+
             // Cuota 2: Vencimiento Sunday, August 1, 2021 12:00:00 AM / Desbloqueo Tuesday, August 10, 2021 12:00:00 AM
-            cuotaVencimientosArr.push(web3.utils.numberToHex(1627776000));
-            cuotaVencimientosArr.push(web3.utils.numberToHex(1628553600));
+            const cuota2 = {
+                numero: 2,
+                montoFiat: 10000,
+                timestampVencimiento: 1627776000,
+                timestampDesbloqueo: 1628553600,
+                status: AVAL_CUOTA_STATUS_PENDIENTE
+            };
+
             // Cuota 3: Wednesday, September 1, 2021 12:00:00 AM / Desbloqueo Friday, September 10, 2021 12:00:00 AM
-            cuotaVencimientosArr.push(web3.utils.numberToHex(1630454400));
-            cuotaVencimientosArr.push(web3.utils.numberToHex(1631232000));
+            const cuota3 = {
+                numero: 3,
+                montoFiat: 10000,
+                timestampVencimiento: 1630454400,
+                timestampDesbloqueo: 1631232000,
+                status: AVAL_CUOTA_STATUS_PENDIENTE
+            };
+
             // Cuota 4: Vencimiento Friday, October 1, 2021 12:00:00 AM / Desbloqueo Sunday, October 10, 2021 12:00:00 AM
-            cuotaVencimientosArr.push(web3.utils.numberToHex(1633046400));
-            cuotaVencimientosArr.push(web3.utils.numberToHex(1633824000));
+            const cuota4 = {
+                numero: 4,
+                montoFiat: 10000,
+                timestampVencimiento: 1633046400,
+                timestampDesbloqueo: 1633824000,
+                status: AVAL_CUOTA_STATUS_PENDIENTE
+            };
+
             // Cuota 5: Vencimiento Monday, November 1, 2021 12:00:00 AM / Desbloqueo Wednesday, November 10, 2021 12:00:00 AM
-            cuotaVencimientosArr.push(web3.utils.numberToHex(1635724800));
-            cuotaVencimientosArr.push(web3.utils.numberToHex(1636502400));
+            const cuota5 = {
+                numero: 5,
+                montoFiat: 10000,
+                timestampVencimiento: 1635724800,
+                timestampDesbloqueo: 1636502400,
+                status: AVAL_CUOTA_STATUS_PENDIENTE
+            };
+
             // Cuota 6: Vencimiento Wednesday, December 1, 2021 12:00:00 AM / Desbloqueo Friday, December 10, 2021 12:00:00 AM
-            cuotaVencimientosArr.push(web3.utils.numberToHex(1638316800));
-            cuotaVencimientosArr.push(web3.utils.numberToHex(1639094400));
+            const cuota6 = {
+                numero: 6,
+                montoFiat: 10000,
+                timestampVencimiento: 1638316800,
+                timestampDesbloqueo: 1639094400,
+                status: AVAL_CUOTA_STATUS_PENDIENTE
+            };
+
+            const cuotas = [cuota1, cuota2, cuota3, cuota4, cuota5, cuota6];
+
+            const cuotaVencimientosArr = [];
+            for (let i = 0; i < cuotas.length; i++) {
+                const cuota = cuotas[i];
+                cuotaVencimientosArr.push(web3.utils.numberToHex(cuota.timestampVencimiento));
+                cuotaVencimientosArr.push(web3.utils.numberToHex(cuota.timestampDesbloqueo));
+            }
 
             let receipt = await avaldao.saveAval(
                 avalId,

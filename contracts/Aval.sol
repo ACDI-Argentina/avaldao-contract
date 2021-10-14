@@ -28,8 +28,8 @@ contract Aval is Constants {
     struct Cuota {
         uint256 numero; // Número de cuota.
         uint256 montoFiat; // Monto de la cuota en moneda fiat;
-        uint256 timestampVencimiento; // Timestamp con la fecha de vencimiento de la cuota.
-        uint256 timestampDesbloqueo; // Timestamp con la fecha de desbloqueo de la cuota.
+        uint32 timestampVencimiento; // Timestamp con la fecha de vencimiento de la cuota.
+        uint32 timestampDesbloqueo; // Timestamp con la fecha de desbloqueo de la cuota.
         CuotaStatus status; // Estado de la cuota.
     }
 
@@ -71,10 +71,6 @@ contract Aval is Constants {
     constructor(
         string _id,
         string _infoCid,
-        /*address _avaldao,
-        address _solicitante,
-        address _comerciante,
-        address _avalado,*/
         address[] _users,
         uint256 _montoFiat
     ) {
@@ -91,48 +87,13 @@ contract Aval is Constants {
 
     /**
      * @notice Inicializa un nuevo Contrato de Aval.
-     * @param _timestampVencimientoArr arreglo con las fechas de venicmiento de cada cuota.
-     * @param _timestampDesbloqueoArr arreglo con las fechas de desbloqueo de cada cuota.
-     */
-    /*function initializeCuotas(
-        bytes32[] _timestampVencimientoArr,
-        bytes32[] _timestampDesbloqueoArr
-    ) external onlyByAvaldaoContract {
-        // Verifica que se reciba la misma cantidad de fechas de venicmientos y desbloqueo de cuotas.
-        require(
-            _timestampVencimientoArr.length == _timestampDesbloqueoArr.length,
-            ERROR_CUOTAS_INVALIDAS
-        );
-
-        // El monto debe ser múltiplo de la cantidad de cuotas.
-        require(
-            montoFiat.mod(_timestampVencimientoArr.length) == 0,
-            ERROR_CUOTAS_INVALIDAS
-        );
-
-        // Establecimiento de cuotas.
-        cuotasCantidad = _timestampVencimientoArr.length;
-        uint256 montoFiatCuota = montoFiat.div(cuotasCantidad);
-        for (uint256 i = 0; i < cuotasCantidad; i++) {
-            Cuota memory cuota;
-            cuota.numero = i + 1;
-            cuota.montoFiat = montoFiatCuota;
-            cuota.timestampVencimiento = uint256(_timestampVencimientoArr[i]);
-            cuota.timestampDesbloqueo = uint256(_timestampDesbloqueoArr[i]);
-            cuota.status = CuotaStatus.Pendiente;
-            cuotas[i] = cuota;
-        }
-    }*/
-
-    /**
-     * @notice Inicializa un nuevo Contrato de Aval.
      * @param _timestampVencimiento arreglo con las fechas de venicmiento de cada cuota.
      * @param _timestampDesbloqueo arreglo con las fechas de desbloqueo de cada cuota.
      */
     function addCuota(
         uint256 _montoFiat,
-        uint256 _timestampVencimiento,
-        uint256 _timestampDesbloqueo
+        uint32 _timestampVencimiento,
+        uint32 _timestampDesbloqueo
     ) external onlyByAvaldaoContract {
         cuotasCantidad = cuotasCantidad + 1;
         Cuota memory cuota;
@@ -141,7 +102,35 @@ contract Aval is Constants {
         cuota.timestampVencimiento = _timestampVencimiento;
         cuota.timestampDesbloqueo = _timestampDesbloqueo;
         cuota.status = CuotaStatus.Pendiente;
-        cuotas.push(cuota);        
+        cuotas.push(cuota);
+    }
+
+    /**
+     * @notice Obtiene la cuota número `_numero` del Aval.
+     * @param _numero número de cuota requerida.
+     * @return Datos del Aval.
+     */
+    function getCuotaByNumero(uint256 _numero)
+        external
+        view
+        returns (
+            uint256 numero,
+            uint256 montoFiat,
+            uint32 timestampVencimiento,
+            uint32 timestampDesbloqueo,
+            CuotaStatus status
+        )
+    {
+        for (uint256 i = 0; i < cuotas.length; i++) {
+            if (cuotas[i].numero == _numero) {
+                numero = cuotas[i].numero;
+                montoFiat = cuotas[i].montoFiat;
+                timestampVencimiento = cuotas[i].timestampVencimiento;
+                timestampDesbloqueo = cuotas[i].timestampDesbloqueo;
+                status = cuotas[i].status;
+                break;
+            }
+        }
     }
 
     /**
