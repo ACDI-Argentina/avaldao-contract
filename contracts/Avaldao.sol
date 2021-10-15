@@ -93,38 +93,42 @@ contract Avaldao is AragonApp, Constants {
 
     /**
      * @notice Crea un aval. Quien envía la transacción es el solicitante del aval.
+     * @param _id identidicador del aval.
+     * @param _infoCid Content ID de la información (JSON) del aval. IPFS Cid.
+     * @param _users direcciones con los participantes del aval. 0:Solicitante, 1:Comerciante, 2:Avalado y 3:Avaldao.
+     * @param _montoFiat monto FIAT del aval medido en centavos de USD.
+     * @param _timestampCuotas timestamps con las fechas de las cuotas medidas en segundos. El número requiere 4 bytes.
      */
     function saveAval(
         string _id,
         string _infoCid,
         address[] _users,
         uint256 _montoFiat,
-        bytes4[] _timestampVencimientos
+        bytes4[] _timestampCuotas
     ) external auth(CREATE_AVAL_ROLE) {
         // El sender debe ser el solicitante del aval.
-        require(_users[1] == msg.sender, ERROR_AUTH_FAILED);
+        require(_users[0] == msg.sender, ERROR_AUTH_FAILED);
 
-        uint256 cuotasCantidad = _timestampVencimientos.length.div(2);
+        // Cada cuota se compone por un par de fecha de vencimiento y desbloqueo.
+        uint8 cuotasCantidad = uint8(_timestampCuotas.length.div(2));
+
         // El monto debe ser múltiplo de la cantidad de cuotas.
         require(_montoFiat.mod(cuotasCantidad) == 0, ERROR_CUOTAS_INVALIDAS);
 
-        // Si no se realiza este copiado, el smart contract no compila con el siguiente error.
+        // Si no se realiza este copiado, el smart contract no compila con el siguiente error:
         // UnimplementedFeatureError: Only byte arrays can be encoded from calldata currently.
         // Error BDLR600: Compilation failed
         address[] memory users = _users;
-        //bytes32[] memory timestampVencimientoArr = _timestampVencimientoArr;
-        //bytes32[] memory timestampDesbloqueoArr = _timestampDesbloqueoArr;
 
         Aval aval = new Aval(_id, _infoCid, users, _montoFiat);
-        //aval.initializeCuotas(timestampVencimientoArr, timestampDesbloqueoArr);
 
         // Establecimiento de cuotas.
         uint256 montoFiatCuota = _montoFiat.div(cuotasCantidad);
         for (uint8 i = 0; i < cuotasCantidad; i++) {
             aval.addCuota(
                 montoFiatCuota,
-                uint32(_timestampVencimientos[i * 2]),
-                uint32(_timestampVencimientos[i * 2 + 1])
+                uint32(_timestampCuotas[i * 2]), // Timestamp con la fecha de vencimiento.
+                uint32(_timestampCuotas[i * 2 + 1]) // Timestamp con la fecha de desbloqueo.
             );
         }
 

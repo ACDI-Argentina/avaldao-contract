@@ -126,7 +126,7 @@ contract('Avaldao App', (accounts) => {
             const avalId = '6130197bf45de20013f29190';
             const montoFiat = 60000;
 
-            const usersArr = [avaldaoAddress, solicitanteAddress, comercianteAddress, avaladoAddress];
+            const usersArr = [solicitanteAddress, comercianteAddress, avaladoAddress, avaldaoAddress];
 
             // Cuota 1: Vencimiento Thursday, July 1, 2021 12:00:00 AM / Desbloqueo Saturday, July 10, 2021 12:00:00 AM
             const cuota1 = {
@@ -184,11 +184,11 @@ contract('Avaldao App', (accounts) => {
 
             const cuotas = [cuota1, cuota2, cuota3, cuota4, cuota5, cuota6];
 
-            const cuotaVencimientosArr = [];
+            const timestampCuotas = [];
             for (let i = 0; i < cuotas.length; i++) {
                 const cuota = cuotas[i];
-                cuotaVencimientosArr.push(web3.utils.numberToHex(cuota.timestampVencimiento));
-                cuotaVencimientosArr.push(web3.utils.numberToHex(cuota.timestampDesbloqueo));
+                timestampCuotas.push(web3.utils.numberToHex(cuota.timestampVencimiento));
+                timestampCuotas.push(web3.utils.numberToHex(cuota.timestampDesbloqueo));
             }
 
             let receipt = await avaldao.saveAval(
@@ -196,7 +196,7 @@ contract('Avaldao App', (accounts) => {
                 INFO_CID,
                 usersArr,
                 montoFiat,
-                cuotaVencimientosArr,
+                timestampCuotas,
                 { from: solicitanteAddress }
             );
 
@@ -215,7 +215,7 @@ contract('Avaldao App', (accounts) => {
                 comerciante: comercianteAddress,
                 avalado: avaladoAddress,
                 montoFiat: montoFiat,
-                cuotasCantidad: cuotaVencimientosArr.length / 2,
+                cuotasCantidad: timestampCuotas.length / 2,
                 cuotas: cuotas,
                 status: AVAL_STATUS_COMPLETADO
             });
@@ -226,7 +226,7 @@ contract('Avaldao App', (accounts) => {
             const avalId = '613147122919060012190e66';
             const montoFiat = 60000;
 
-            const usersArr = [avaldaoAddress, solicitanteAddress, comercianteAddress, avaladoAddress];
+            const usersArr = [solicitanteAddress, comercianteAddress, avaladoAddress, avaldaoAddress];
 
             // Cuota 1: Vencimiento Thursday, July 1, 2021 12:00:00 AM / Desbloqueo Saturday, July 10, 2021 12:00:00 AM
             const cuota1 = {
@@ -284,11 +284,11 @@ contract('Avaldao App', (accounts) => {
 
             const cuotas = [cuota1, cuota2, cuota3, cuota4, cuota5, cuota6];
 
-            const cuotaVencimientosArr = [];
+            const timestampCuotas = [];
             for (let i = 0; i < cuotas.length; i++) {
                 const cuota = cuotas[i];
-                cuotaVencimientosArr.push(web3.utils.numberToHex(cuota.timestampVencimiento));
-                cuotaVencimientosArr.push(web3.utils.numberToHex(cuota.timestampDesbloqueo));
+                timestampCuotas.push(web3.utils.numberToHex(cuota.timestampVencimiento));
+                timestampCuotas.push(web3.utils.numberToHex(cuota.timestampDesbloqueo));
             }
 
             await assertRevert(avaldao.saveAval(
@@ -296,7 +296,7 @@ contract('Avaldao App', (accounts) => {
                 INFO_CID,
                 usersArr,
                 montoFiat,
-                cuotaVencimientosArr,
+                timestampCuotas,
                 {
                     from: notAuthorized
                 }
@@ -308,7 +308,7 @@ contract('Avaldao App', (accounts) => {
             const avalId = '613166ebcccc9e0012c4229b';
             const montoFiat = 60000;
 
-            const usersArr = [avaldaoAddress, solicitanteAddress, comercianteAddress, avaladoAddress];
+            const usersArr = [solicitanteAddress, comercianteAddress, avaladoAddress, avaldaoAddress];
 
             // Cuota 1: Vencimiento Thursday, July 1, 2021 12:00:00 AM / Desbloqueo Saturday, July 10, 2021 12:00:00 AM
             const cuota1 = {
@@ -366,11 +366,11 @@ contract('Avaldao App', (accounts) => {
 
             const cuotas = [cuota1, cuota2, cuota3, cuota4, cuota5, cuota6];
 
-            const cuotaVencimientosArr = [];
+            const timestampCuotas = [];
             for (let i = 0; i < cuotas.length; i++) {
                 const cuota = cuotas[i];
-                cuotaVencimientosArr.push(web3.utils.numberToHex(cuota.timestampVencimiento));
-                cuotaVencimientosArr.push(web3.utils.numberToHex(cuota.timestampDesbloqueo));
+                timestampCuotas.push(web3.utils.numberToHex(cuota.timestampVencimiento));
+                timestampCuotas.push(web3.utils.numberToHex(cuota.timestampDesbloqueo));
             }
 
             let receipt = await avaldao.saveAval(
@@ -378,7 +378,7 @@ contract('Avaldao App', (accounts) => {
                 INFO_CID,
                 usersArr,
                 montoFiat,
-                cuotaVencimientosArr,
+                timestampCuotas,
                 {
                     from: solicitanteAddress
                 }
@@ -391,7 +391,7 @@ contract('Avaldao App', (accounts) => {
                 NEW_INFO_CID,
                 usersArr,
                 montoFiat,
-                cuotaVencimientosArr,
+                timestampCuotas,
                 {
                     from: solicitanteAddress
                 }
@@ -410,7 +410,7 @@ contract('Avaldao App', (accounts) => {
                 comerciante: comercianteAddress,
                 avalado: avaladoAddress,
                 montoFiat: montoFiat,
-                cuotasCantidad: cuotaVencimientosArr.length / 2,
+                cuotasCantidad: timestampCuotas.length / 2,
                 cuotas: cuotas,
                 status: AVAL_STATUS_COMPLETADO
             });
@@ -421,7 +421,7 @@ contract('Avaldao App', (accounts) => {
             const avalId = '61316fa69a53310013d86292';
             const montoFiat = 60000;
 
-            const usersArr = [avaldaoAddress, solicitanteAddress, comercianteAddress, avaladoAddress];
+            const usersArr = [solicitanteAddress, comercianteAddress, avaladoAddress, avaldaoAddress];
 
             // Cuota 1: Vencimiento Thursday, July 1, 2021 12:00:00 AM / Desbloqueo Saturday, July 10, 2021 12:00:00 AM
             const cuota1 = {
@@ -479,11 +479,11 @@ contract('Avaldao App', (accounts) => {
 
             const cuotas = [cuota1, cuota2, cuota3, cuota4, cuota5, cuota6];
 
-            const cuotaVencimientosArr = [];
+            const timestampCuotas = [];
             for (let i = 0; i < cuotas.length; i++) {
                 const cuota = cuotas[i];
-                cuotaVencimientosArr.push(web3.utils.numberToHex(cuota.timestampVencimiento));
-                cuotaVencimientosArr.push(web3.utils.numberToHex(cuota.timestampDesbloqueo));
+                timestampCuotas.push(web3.utils.numberToHex(cuota.timestampVencimiento));
+                timestampCuotas.push(web3.utils.numberToHex(cuota.timestampDesbloqueo));
             }
 
             let receipt = await avaldao.saveAval(
@@ -491,7 +491,7 @@ contract('Avaldao App', (accounts) => {
                 INFO_CID,
                 usersArr,
                 montoFiat,
-                cuotaVencimientosArr,
+                timestampCuotas,
                 {
                     from: solicitanteAddress
                 }
@@ -506,7 +506,7 @@ contract('Avaldao App', (accounts) => {
                     NEW_INFO_CID,
                     usersArr,
                     montoFiat,
-                    cuotaVencimientosArr,
+                    timestampCuotas,
                     {
                         from: notAuthorized
                     }

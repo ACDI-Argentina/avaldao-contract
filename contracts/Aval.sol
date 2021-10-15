@@ -26,10 +26,10 @@ contract Aval is Constants {
 
     /// @dev Estructura que define los datos de una Cuota.
     struct Cuota {
-        uint256 numero; // Número de cuota.
+        uint8 numero; // Número de cuota.
         uint256 montoFiat; // Monto de la cuota en moneda fiat;
-        uint32 timestampVencimiento; // Timestamp con la fecha de vencimiento de la cuota.
-        uint32 timestampDesbloqueo; // Timestamp con la fecha de desbloqueo de la cuota.
+        uint32 timestampVencimiento; // Timestamp con la fecha de vencimiento de la cuota. 4 bytes.
+        uint32 timestampDesbloqueo; // Timestamp con la fecha de desbloqueo de la cuota. 4 bytes.
         CuotaStatus status; // Estado de la cuota.
     }
 
@@ -45,7 +45,7 @@ contract Aval is Constants {
     address public comerciante; // Dirección del usuario Comerciante
     address public avalado; // Dirección del usuario Avalado
     uint256 public montoFiat; // Monto en moneda FIAT requerido para el aval, medido en centavos de USD.
-    uint256 public cuotasCantidad; // Cantidad de cuotas del aval.
+    uint8 public cuotasCantidad; // Cantidad de cuotas del aval.
     Cuota[] public cuotas; // Cuotas del aval.
     uint256[] public reclamoIds; // Ids de los reclamos relacionados.
     Status public status; // Estado del aval.
@@ -63,10 +63,10 @@ contract Aval is Constants {
 
     /**
      * @notice Inicializa un nuevo Contrato de Aval.
-     * @param _id identificador del aval.
+     * @param _id identidicador del aval.
      * @param _infoCid Content ID de la información (JSON) del aval. IPFS Cid.
-     *
-     * @param _montoFiat monto FIAT requerido para el aval, medidio en centavos de USD.
+     * @param _users direcciones con los participantes del aval. 0:Solicitante, 1:Comerciante, 2:Avalado y 3:Avaldao.
+     * @param _montoFiat monto FIAT del avala medido en centavos de USD.
      */
     constructor(
         string _id,
@@ -77,16 +77,17 @@ contract Aval is Constants {
         avaldaoContract = msg.sender; // Avaldao Contract.
         id = _id;
         infoCid = _infoCid;
-        avaldao = _users[0];
-        solicitante = _users[1];
-        comerciante = _users[2];
-        avalado = _users[3];
+        solicitante = _users[0];
+        comerciante = _users[1];
+        avalado = _users[2];
+        avaldao = _users[3];
         montoFiat = _montoFiat;
         status = Status.Completado;
     }
 
     /**
      * @notice Inicializa un nuevo Contrato de Aval.
+     * @param _montoFiat monto FIAT de la cuota medido en centavos de USD.
      * @param _timestampVencimiento arreglo con las fechas de venicmiento de cada cuota.
      * @param _timestampDesbloqueo arreglo con las fechas de desbloqueo de cada cuota.
      */
@@ -131,31 +132,6 @@ contract Aval is Constants {
                 break;
             }
         }
-    }
-
-    /**
-     * @notice Actualiza el aval. Solo el usuario solicitante puede actualizar el aval.
-     * @param _infoCid Content ID de las información (JSON) del aval. IPFS Cid.
-     * @param _avaldao address de Avaldao.
-     * @param _comerciante address del Comerciante.
-     * @param _avalado address del Avalado.
-     * @param _montoFiat monto FIAT requerido para el aval, medidio en centavos de USD.
-     * @param _cuotasCantidad cantidad de cuotas del aval.
-     */
-    function update(
-        string _infoCid,
-        address _avaldao,
-        address _comerciante,
-        address _avalado,
-        uint256 _montoFiat,
-        uint256 _cuotasCantidad
-    ) external onlyByAvaldaoContract {
-        infoCid = _infoCid;
-        avaldao = _avaldao;
-        comerciante = _comerciante;
-        avalado = _avalado;
-        montoFiat = _montoFiat;
-        cuotasCantidad = _cuotasCantidad;
     }
 
     /**
