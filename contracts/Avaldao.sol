@@ -236,13 +236,91 @@ contract Avaldao is AragonApp, Constants {
     }
 
     /**
+     * @notice desbloquea fondos del `_aval` equivalentes a una cuota.
+     * Los fondos son retornados al fondo de garantía general.
+     * @dev TODO Esta implementación asume que los token tienen el mismo valor que al momento de bloquearse en el aval.
+     * @param _aval aval desde donde se desbloquean los fondos.
+     */
+    function unlockFund(Aval _aval) external {
+        // El aval no debe tener un reclamo vigente para desbloquear los fondos.
+        require(_aval.hasReclamoVigente() == false, ERROR_AVAL_CON_RECLAMO);
+
+        for (uint256 i1 = 0; i1 < _aval.cuotasCantidad(); i1++) {
+            (
+                uint8 cuotaNumero,
+                uint256 cuotaMontoFiat,
+                uint32 cuotaTimestampVencimiento,
+                uint32 cuotaTimestampDesbloqueo,
+                Aval.CuotaStatus cuotaStatus
+            ) = _aval.cuotas(i1);
+
+            // Una cuota es válida para desbloquear fondos si su estado es Pendiente
+            // y la fecha actual es igual o mayor a la fecha de desbloqueo de fondos de la cuota.
+            if (
+                cuotaStatus == Aval.CuotaStatus.Pendiente &&
+                cuotaTimestampDesbloqueo <= block.timestamp
+            ) {
+                uint256 montoFiatUnlock = 0;
+                for (uint256 i2 = 0; i2 < tokens.length; i2++) {
+                    if (montoFiatUnlock >= cuotaMontoFiat) {
+                        // Se alcanzó el monto desbloqueado para la cuota.
+                        break;
+                    }
+                    address token = tokens[i2];
+                    uint256 tokenRate = exchangeRateProvider.getExchangeRate(
+                        token
+                    );
+                    uint256 tokenBalance = _getContractFundByToken(
+                        _aval,
+                        token
+                    );
+                    uint256 tokenBalanceFiat = tokenBalance.div(tokenRate);
+                    uint256 tokenBalanceToTransfer;
+
+                    if (
+                        montoFiatUnlock.add(tokenBalanceFiat) < cuotaMontoFiat
+                    ) {
+                        // Con el balance se alcanza una parte del fondo a desbloquear.
+                        // Se transfiere todo el balance.
+                        tokenBalanceToTransfer = tokenBalance;
+                        montoFiatUnlock = montoFiatUnlock.add(tokenBalanceFiat);
+                    } else {
+                        // Con el balance del token se alcanza el fondo a desbloquear.
+                        // Se obtiene la diferencia entre el monto objetivo
+                        // y el monto desbloqueado hasta el momento.
+                        uint256 montoFiatDiff = cuotaMontoFiat.sub(
+                            montoFiatUnlock
+                        );
+                        // Se transfiere solo el balance necesario para llegar al objetivo.
+                        tokenBalanceToTransfer = montoFiatDiff.mul(tokenRate);
+                        // Se alcanzó el monto objetivo.
+                        montoFiatUnlock = montoFiatUnlock.add(montoFiatDiff);
+                    }
+
+                    // Se transfiere el balance desbloqueado desde el Aval hacia el Vault.
+                    _aval.unlockFund(vault, token, tokenBalanceToTransfer);
+                }
+
+                // Se actualiza el estado de la cuota a Pagada.
+                // Como se desbloquean los fondos, se asume que la cuota ha sido pagada.
+                _aval.updateCuotaStatusByNumero(
+                    cuotaNumero,
+                    Aval.CuotaStatus.Pagada
+                );
+
+                break;
+            }
+        }
+    }
+
+    /**
      * @notice Obtiene el monto disponible en moneda FIAT del fondo de garantía.
      */
     function getAvailableFundFiat() public view returns (uint256) {
         uint256 availableFundFiat = 0;
         for (uint256 i = 0; i < tokens.length; i++) {
             address token = tokens[i];
-            uint256 tokenAvailableFund = _getAvailableFundByToken(token);
+            uint256 tokenAvailableFund = _getContractFundByToken(vault, token);
             uint256 tokenRate = exchangeRateProvider.getExchangeRate(token);
             availableFundFiat = availableFundFiat.add(
                 tokenAvailableFund.div(tokenRate)
@@ -362,15 +440,21 @@ contract Avaldao is AragonApp, Constants {
     }
 
     /**
-     * @notice Obtiene el monto disponible del token en el fondo de garantía.
-     * @param _token token a partir del cual se obtiene el fondo de garantía disponible.
+     * @notice Obtiene el fondo del `_token` perteneciente al `_contractAddress`.
+     * @param _contractAddress dirección del contrato al cual pertenecen los fondos.
+     * @param _token token de los fondos.
      */
-    function _getAvailableFundByToken(address _token)
+    function _getContractFundByToken(address _contractAddress, address _token)
         private
         view
         returns (uint256)
     {
-        return vault.balance(_token);
+        //return vault.balance(_token);
+        if (_token == ETH) {
+            return _contractAddress.balance;
+        } else {
+            return ERC20(_token).staticBalanceOf(_contractAddress);
+        }
     }
 
     /**
@@ -431,28 +515,28 @@ contract Avaldao is AragonApp, Constants {
     /**
      * @notice bloquea fondos desde el fondo de garantía en el aval especificado.
      *
-     * @param aval donde se bloquean los fondos.
+     * @param _aval donde se bloquean los fondos.
      */
-    function _lockFund(Aval aval) internal {
+    function _lockFund(Aval _aval) internal {
         // Debe haber fondos suficientes para garantizar el aval.
         require(
-            aval.montoFiat() <= getAvailableFundFiat(),
+            _aval.montoFiat() <= getAvailableFundFiat(),
             ERROR_AVAL_FONDOS_INSUFICIENTES
         );
 
         uint256 montoFiatLock = 0;
         for (uint256 i = 0; i < tokens.length; i++) {
-            if (montoFiatLock >= aval.montoFiat()) {
+            if (montoFiatLock >= _aval.montoFiat()) {
                 // Se alcanzó el monto bloqueado para el aval.
                 break;
             }
             address token = tokens[i];
             uint256 tokenRate = exchangeRateProvider.getExchangeRate(token);
-            uint256 tokenBalance = _getAvailableFundByToken(token);
+            uint256 tokenBalance = _getContractFundByToken(vault, token);
             uint256 tokenBalanceFiat = tokenBalance.div(tokenRate);
             uint256 tokenBalanceToTransfer;
 
-            if (montoFiatLock.add(tokenBalanceFiat) < aval.montoFiat()) {
+            if (montoFiatLock.add(tokenBalanceFiat) < _aval.montoFiat()) {
                 // Con el balance se garantiza una parte del fondo requerido.
                 // Se transfiere todo el balance.
                 tokenBalanceToTransfer = tokenBalance;
@@ -461,7 +545,7 @@ contract Avaldao is AragonApp, Constants {
                 // Con el balance del token se garantiza el fondo requerido.
                 // Se obtiene la diferencia entre el monto objetivo
                 // y el monto bloqueado hasta el momento.
-                uint256 montoFiatDiff = aval.montoFiat().sub(montoFiatLock);
+                uint256 montoFiatDiff = _aval.montoFiat().sub(montoFiatLock);
                 // Se transfiere solo el balance necesario para llegar al objetivo.
                 tokenBalanceToTransfer = montoFiatDiff.mul(tokenRate);
                 // Se alcanzó el monto objetivo.
@@ -469,7 +553,7 @@ contract Avaldao is AragonApp, Constants {
             }
 
             // Se transfiere el balance bloqueado desde el Vault hacia el Aval.
-            vault.transfer(token, address(aval), tokenBalanceToTransfer);
+            vault.transfer(token, address(_aval), tokenBalanceToTransfer);
         }
     }
 }

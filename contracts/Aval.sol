@@ -1,7 +1,8 @@
 pragma solidity ^0.4.24;
 
-import "./Constants.sol";
+import "@aragon/apps-vault/contracts/Vault.sol";
 import "@aragon/os/contracts/lib/math/SafeMath.sol";
+import "./Constants.sol";
 
 /**
  * @title Contrato de Aval
@@ -23,6 +24,10 @@ contract Aval is Constants {
         Pagada,
         Reintegrada
     }
+    enum ReclamoStatus {
+        Vigente,
+        Cerrado
+    }
 
     /// @dev Estructura que define los datos de una Cuota.
     struct Cuota {
@@ -31,6 +36,12 @@ contract Aval is Constants {
         uint32 timestampVencimiento; // Timestamp con la fecha de vencimiento de la cuota. 4 bytes.
         uint32 timestampDesbloqueo; // Timestamp con la fecha de desbloqueo de la cuota. 4 bytes.
         CuotaStatus status; // Estado de la cuota.
+    }
+
+    /// @dev Estructura que define los datos de un Reclamo.
+    struct Reclamo {
+        uint8 numero; // Número de reclamo.
+        ReclamoStatus status; // Estado del reclamo.
     }
 
     /**
@@ -47,7 +58,7 @@ contract Aval is Constants {
     uint256 public montoFiat; // Monto en moneda FIAT requerido para el aval, medido en centavos de USD.
     uint8 public cuotasCantidad; // Cantidad de cuotas del aval.
     Cuota[] public cuotas; // Cuotas del aval.
-    uint256[] public reclamoIds; // Ids de los reclamos relacionados.
+    Reclamo[] public reclamos; // Reclamos del aval.
     Status public status; // Estado del aval.
 
     event Received(address, uint256);
@@ -107,15 +118,29 @@ contract Aval is Constants {
     }
 
     /**
+     * @notice desbloquea fondos del aval, devolviendo `_monto` `_token` al `_vault`.
+     * @param _vault Address del vault donde devolver los fondos.
+     * @param _token token devuelto al fondo de garantía.
+     * @param _monto monto devuelto al fondo de garantía.
+     */
+    function unlockFund(
+        Vault _vault,
+        address _token,
+        uint256 _monto
+    ) external onlyByAvaldaoContract {
+        _vault.deposit(_token, _monto);
+    }
+
+    /**
      * @notice Obtiene la cuota número `_numero` del Aval.
      * @param _numero número de cuota requerida.
      * @return Datos del Aval.
      */
-    function getCuotaByNumero(uint256 _numero)
+    function getCuotaByNumero(uint8 _numero)
         external
         view
         returns (
-            uint256 numero,
+            uint8 numero,
             uint256 montoFiat,
             uint32 timestampVencimiento,
             uint32 timestampDesbloqueo,
@@ -140,6 +165,41 @@ contract Aval is Constants {
      */
     function updateStatus(Status _status) external onlyByAvaldaoContract {
         status = _status;
+    }
+
+    /**
+     * @notice Actualiza el estado de la cuota número `_numero` del aval con `_cuotaStatus`.
+     * @param _numero número de la cuota a actualizar el estado.
+     * @param _cuotaStatus nuevo estado de la cuota del aval.
+     */
+    function updateCuotaStatusByNumero(uint8 _numero, CuotaStatus _cuotaStatus)
+        external
+        onlyByAvaldaoContract
+    {
+        for (uint256 i = 0; i < cuotas.length; i++) {
+            if (cuotas[i].numero == _numero) {
+                cuotas[i].status = _cuotaStatus;
+                break;
+            }
+        }
+    }
+
+    /**
+     * @notice Determina si el aval tiene o no un reclamo en estado vigente.
+     * @return <code>true</code>.
+     */
+    function hasReclamoVigente()
+        external
+        view
+        returns (bool hasReclamoVigente)
+    {
+        hasReclamoVigente = false;
+        for (uint256 i = 0; i < reclamos.length; i++) {
+            if (reclamos[i].status == ReclamoStatus.Vigente) {
+                hasReclamoVigente = true;
+                break;
+            }
+        }
     }
 
     /**
