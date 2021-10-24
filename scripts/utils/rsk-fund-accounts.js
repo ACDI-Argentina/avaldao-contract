@@ -2,6 +2,7 @@ var Web3 = require('web3');
 var network = "http://localhost:4444";
 
 var VaultJson = require('../../artifacts/Vault.json');
+var ERC20Json = require('../../artifacts/ERC20.json');
 
 // Vault Contract
 var vaultAddress = '0x669E348cAd8aBeB10F489bF81c685f3eEA72798F';
@@ -30,7 +31,7 @@ async function main() {
 
     console.log('');
     console.log('RSK Node Status');
-    console.log('  Network: ' + network);
+    console.log(`  Network: ${network}`);
     console.log('-------------------------------------------');
 
     var web3 = new Web3(network);
@@ -46,11 +47,6 @@ async function main() {
         value: value,
         from: from
     });
-    /*await web3.eth.sendTransaction({
-        from: from,
-        to: vaultAddress,
-        value: value
-    });*/
     console.log('  - Transferencia de RBTC al Fondo de Garantía.');
 
     // Avaldao
@@ -85,59 +81,30 @@ async function main() {
     });
     console.log('  - Transferencia de RBTC a Avalado.');
 
-    // ERC20 Token
-
-    let minAbi = [
-        // transfer
-        {
-            "constant": false,
-            "inputs": [
-                {
-                    "name": "_to",
-                    "type": "address"
-                },
-                {
-                    "name": "_value",
-                    "type": "uint256"
-                }
-            ],
-            "name": "transfer",
-            "outputs": [
-                {
-                    "name": "",
-                    "type": "bool"
-                }
-            ],
-            "type": "function"
-        }
-    ];
-
     // Use BigNumber
     let decimals = web3.utils.toBN(18);
-    let amount = web3.utils.toBN(10);
+    let amount = web3.utils.toBN(500);
     // calculate ERC20 token amount
     value = amount.mul(web3.utils.toBN(10).pow(decimals));
 
     // RIF Token
-    let rifTokenAddress = '0x0Aa058aD63E36bC2f98806f2D638353AE89C3634';
+    let rifTokenAddress = '0x463F29B11503e198f6EbeC9903b4e5AaEddf6D29';
     // Get ERC20 Token contract instance
-    let rifContract = new web3.eth.Contract(minAbi, rifTokenAddress);
+    let rifContract = new web3.eth.Contract(ERC20Json.abi, rifTokenAddress);
 
     // DOC Token
-    let docTokenAddress = '0xb2e09ab18a1792025D8505B5722E527d5e90c8e7';
+    let docTokenAddress = '0x987c1f13d417F7E04d852B44badc883E4E9782e1';
     // Get ERC20 Token contract instance
-    let docContract = new web3.eth.Contract(minAbi, docTokenAddress);
+    let docContract = new web3.eth.Contract(ERC20Json.abi, docTokenAddress);
 
     // Vault
-    //await rifContract.methods.transfer(vaultAddress, value).send({ from: from });
+    await rifContract.methods.approve(vaultAddress, value).send({ from: from });
     await vault.methods.deposit(rifTokenAddress, value).send({
-        value: value,
         from: from
     });
     console.log('  - Transferencia de RIF al Fondo de Garantía.');
-    //await docContract.methods.transfer(vaultAddress, value).send({ from: from });
+    await docContract.methods.approve(vaultAddress, value).send({ from: from });
     await vault.methods.deposit(docTokenAddress, value).send({
-        value: value,
         from: from
     });
     console.log('  - Transferencia de DOC al Fondo de Garantía.');

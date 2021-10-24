@@ -59,7 +59,7 @@ module.exports = async ({ getNamedAccounts, deployments, getChainId }) => {
 
     log(`Avaldao deploy`);
 
-    const avaldaoBase = await Avaldao.new({ from: deployer });
+    const avaldaoBase = await Avaldao.new({ from: deployer, gas: 8867704 });
     log(` - Avaldao Base: ${avaldaoBase.address}`);
     await sleep();
 

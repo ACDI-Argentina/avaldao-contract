@@ -60,9 +60,12 @@ contract Avaldao is AragonApp, Constants {
     ExchangeRateProvider public exchangeRateProvider;
     Vault public vault;
 
+    event SaveAval(string id);
+    event SignAval(string id);
+
     /**
      * @notice Inicializa el Avaldao App con el Vault `_vault`.
-     * @param _vault Address del vault
+     * @param _vault Address del Vault con los fondos de garantía general.
      * @param _version versión del smart contract.
      * @param _chainId identificador de la red.
      * @param _contractAddress dirección del smart contract (proxy Aragon).
@@ -87,9 +90,6 @@ contract Avaldao is AragonApp, Constants {
 
         initialized();
     }
-
-    event SaveAval(string id);
-    event SignAval(string id);
 
     /**
      * @notice Crea un aval. Quien envía la transacción es el solicitante del aval.
@@ -242,75 +242,9 @@ contract Avaldao is AragonApp, Constants {
      * @param _aval aval desde donde se desbloquean los fondos.
      */
     function unlockFund(Aval _aval) external {
-        // El aval no debe tener un reclamo vigente para desbloquear los fondos.
-        require(_aval.hasReclamoVigente() == false, ERROR_AVAL_CON_RECLAMO);
-
-        for (uint256 i1 = 0; i1 < _aval.cuotasCantidad(); i1++) {
-            (
-                uint8 cuotaNumero,
-                uint256 cuotaMontoFiat,
-                uint32 cuotaTimestampVencimiento,
-                uint32 cuotaTimestampDesbloqueo,
-                Aval.CuotaStatus cuotaStatus
-            ) = _aval.cuotas(i1);
-
-            // Una cuota es válida para desbloquear fondos si su estado es Pendiente
-            // y la fecha actual es igual o mayor a la fecha de desbloqueo de fondos de la cuota.
-            if (
-                cuotaStatus == Aval.CuotaStatus.Pendiente &&
-                cuotaTimestampDesbloqueo <= block.timestamp
-            ) {
-                uint256 montoFiatUnlock = 0;
-                for (uint256 i2 = 0; i2 < tokens.length; i2++) {
-                    if (montoFiatUnlock >= cuotaMontoFiat) {
-                        // Se alcanzó el monto desbloqueado para la cuota.
-                        break;
-                    }
-                    address token = tokens[i2];
-                    uint256 tokenRate = exchangeRateProvider.getExchangeRate(
-                        token
-                    );
-                    uint256 tokenBalance = _getContractFundByToken(
-                        _aval,
-                        token
-                    );
-                    uint256 tokenBalanceFiat = tokenBalance.div(tokenRate);
-                    uint256 tokenBalanceToTransfer;
-
-                    if (
-                        montoFiatUnlock.add(tokenBalanceFiat) < cuotaMontoFiat
-                    ) {
-                        // Con el balance se alcanza una parte del fondo a desbloquear.
-                        // Se transfiere todo el balance.
-                        tokenBalanceToTransfer = tokenBalance;
-                        montoFiatUnlock = montoFiatUnlock.add(tokenBalanceFiat);
-                    } else {
-                        // Con el balance del token se alcanza el fondo a desbloquear.
-                        // Se obtiene la diferencia entre el monto objetivo
-                        // y el monto desbloqueado hasta el momento.
-                        uint256 montoFiatDiff = cuotaMontoFiat.sub(
-                            montoFiatUnlock
-                        );
-                        // Se transfiere solo el balance necesario para llegar al objetivo.
-                        tokenBalanceToTransfer = montoFiatDiff.mul(tokenRate);
-                        // Se alcanzó el monto objetivo.
-                        montoFiatUnlock = montoFiatUnlock.add(montoFiatDiff);
-                    }
-
-                    // Se transfiere el balance desbloqueado desde el Aval hacia el Vault.
-                    _aval.unlockFund(vault, token, tokenBalanceToTransfer);
-                }
-
-                // Se actualiza el estado de la cuota a Pagada.
-                // Como se desbloquean los fondos, se asume que la cuota ha sido pagada.
-                _aval.updateCuotaStatusByNumero(
-                    cuotaNumero,
-                    Aval.CuotaStatus.Pagada
-                );
-
-                break;
-            }
-        }
+        // El sender debe ser Avaldao.
+        require(_aval.avaldao() == msg.sender, ERROR_AUTH_FAILED);
+        _aval.unlockFundCuota(tokens);
     }
 
     /**
@@ -425,8 +359,6 @@ contract Avaldao is AragonApp, Constants {
         avalAddress = address(aval);
     }
 
-    // Internal functions
-
     function _getAval(string _id) private view returns (Aval aval) {
         for (uint256 i = 0; i < avales.length; i++) {
             if (
@@ -445,11 +377,10 @@ contract Avaldao is AragonApp, Constants {
      * @param _token token de los fondos.
      */
     function _getContractFundByToken(address _contractAddress, address _token)
-        private
+        internal
         view
         returns (uint256)
     {
-        //return vault.balance(_token);
         if (_token == ETH) {
             return _contractAddress.balance;
         } else {
@@ -552,8 +483,10 @@ contract Avaldao is AragonApp, Constants {
                 montoFiatLock = montoFiatLock.add(montoFiatDiff);
             }
 
-            // Se transfiere el balance bloqueado desde el Vault hacia el Aval.
-            vault.transfer(token, address(_aval), tokenBalanceToTransfer);
+            if (tokenBalanceToTransfer > 0) {
+                // Se transfiere el balance bloqueado desde el Vault hacia el Aval.
+                vault.transfer(token, address(_aval), tokenBalanceToTransfer);
+            }
         }
     }
 }

@@ -20,6 +20,8 @@ contract Constants is EtherTokenConstant {
     // Errores
 
     string internal constant ERROR_AUTH_FAILED = "AVALDAO_AUTH_FAILED";
+    string internal constant ERROR_TOKEN_APPROVE_FAILED =
+        "AVALDAO_TOKEN_APPROVE_FAILED";
     string internal constant ERROR_VAULT_NOT_CONTRACT =
         "AVALDAO_VAULT_NOT_CONTRACT";
     string internal constant ERROR_INVALID_SIGN = "AVALDAO_INVALID_SIGN";

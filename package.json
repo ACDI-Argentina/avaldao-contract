@@ -11,6 +11,7 @@
     "test:rsk": "buidler test --network rskRegtest",
     "rsk-regtest:deploy": "buidler deploy --network rskRegtest",
     "rsk-regtest:found-accounts": "node scripts/utils/rsk-fund-accounts.js",
+    "rsk-regtest:desbloquear-fondos": "node scripts/utils/avaldao-desbloqueo-automatico.js",
     "rsk-testnet:deploy": "buidler deploy --network rskTestnet",
     "rsk-mainnet:deploy": "buidler deploy --network rskMainnet",
     "publish:major": "buidler publish major",
