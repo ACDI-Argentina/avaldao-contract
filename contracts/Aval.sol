@@ -150,19 +150,14 @@ contract Aval is Constants {
     }
 
     /**
-     * @notice Actualiza el estado del aval.
-     * @param _status nuevo estado del aval.
-     */
-    function updateStatus(Status _status) public onlyByAvaldaoContract {
-        status = _status;
-    }
-
-    /**
      * @notice Desbloquea fondos del aval en `_tokens` equivalentes a una cuota y los retorna al Fondo de Garantía general.
      * @dev TODO Esta implementación asume que los token tienen el mismo valor que al momento de bloquearse en el aval.
      * @param _tokens tokens del fondo del aval.
      */
     function unlockFundCuota(address[] _tokens) public onlyByAvaldaoContract {
+        // El aval debe estar Vigente.
+        require(status == Status.Vigente, ERROR_AVAL_NO_VIGENTE);
+
         // El aval no debe tener un reclamo vigente para desbloquear los fondos.
         require(_hasReclamoVigente() == false, ERROR_AVAL_CON_RECLAMO);
 
@@ -245,6 +240,19 @@ contract Aval is Constants {
                 break;
             }
         }
+
+        if (!_hasCuotaPendiente()) {
+            // El aval ya no tiene cuotas pendientes, por lo que pasa a estado Finalizado.
+            updateStatus(Status.Finalizado);
+        }
+    }
+
+    /**
+     * @notice Actualiza el estado del aval.
+     * @param _status nuevo estado del aval.
+     */
+    function updateStatus(Status _status) public onlyByAvaldaoContract {
+        status = _status;
     }
 
     /**
@@ -254,19 +262,37 @@ contract Aval is Constants {
         emit Received(msg.sender, msg.value);
     }
 
+    /**
+     * @notice Determina si el aval tiene o no una cuota en estado Pendiente.
+     * @return <code>true</code> si tiene una cuota en estado Pendiente.
+     * <code>false</code> si no tiene una cuota en estado Pendiente.
+     */
+    function _hasCuotaPendiente()
+        internal
+        view
+        returns (bool hasCuotaPendiente)
+    {
+        for (uint8 i = 0; i < cuotas.length; i++) {
+            if (cuotas[i].status == CuotaStatus.Pendiente) {
+                hasCuotaPendiente = true;
+                break;
+            }
+        }
+    }
+
     // Internal functions
 
     /**
-     * @notice Determina si el aval tiene o no un reclamo en estado vigente.
-     * @return <code>true</code>.
+     * @notice Determina si el aval tiene o no un reclamo en estado Vigente.
+     * @return <code>true</code> si tiene un reclamo en estado Vigente.
+     * <code>false</code> si no tiene un reclamo en estado Vigente.
      */
     function _hasReclamoVigente()
         internal
         view
         returns (bool hasReclamoVigente)
     {
-        hasReclamoVigente = false;
-        for (uint256 i = 0; i < reclamos.length; i++) {
+        for (uint8 i = 0; i < reclamos.length; i++) {
             if (reclamos[i].status == ReclamoStatus.Vigente) {
                 hasReclamoVigente = true;
                 break;
