@@ -141,6 +141,8 @@ contract Avaldao is AragonApp, Constants {
      * @notice Firma (múltiple) el aval por todos los participantes: Solicitante, Comerciante, Avalado y Avaldao.
      * @dev Las firmas se reciben en 3 array distintos, donde cada uno contiene las variables V, R y S de las firmas en Ethereum.
      * @dev Los elementos de los array corresponden a los firmantes, 0:Solicitante, 1:Comerciante, 2:Avalado y 3:Avaldao.
+     *
+     * TODO Cambiar la interface, recibiendo el address en lugar del ID del Aval.
      * @param _id identificador del aval a firmar.
      * @param _signV array con las variables V de las firmas de los participantes.
      * @param _signR array con las variables R de las firmas de los participantes.
@@ -236,15 +238,48 @@ contract Avaldao is AragonApp, Constants {
     }
 
     /**
-     * @notice desbloquea fondos del `_aval` equivalentes a una cuota.
+     * @notice desbloquea fondos del `_aval` equivalentes a una cuota, preparado para ejecutarse automáticamente cada cierto período.
      * Los fondos son retornados al fondo de garantía general.
      * @dev TODO Esta implementación asume que los token tienen el mismo valor que al momento de bloquearse en el aval.
      * @param _aval aval desde donde se desbloquean los fondos.
      */
-    function unlockFund(Aval _aval) external {
+    function unlockFundAuto(Aval _aval) external {
         // El sender debe ser Avaldao.
         require(_aval.avaldao() == msg.sender, ERROR_AUTH_FAILED);
-        _aval.unlockFundCuota(tokens);
+
+        _aval.unlockFundCuota(tokens, false);
+
+        if (!_aval.hasCuotaPendiente()) {
+            // El aval ya no tiene cuotas pendientes, por lo que pasa a estado Finalizado.
+            _aval.updateStatus(Aval.Status.Finalizado);
+        }
+    }
+
+    /**
+     * @notice desbloquea fondos del `_aval` equivalentes a una cuota, preparado para ejecutarse de manera manual por el solicitante.
+     * Los fondos son retornados al fondo de garantía general.
+     * @dev TODO Esta implementación asume que los token tienen el mismo valor que al momento de bloquearse en el aval.
+     * @param _aval aval desde donde se desbloquean los fondos.
+     */
+    function unlockFundManual(Aval _aval) external {
+        // El sender debe ser el Solicitante.
+        require(_aval.solicitante() == msg.sender, ERROR_AUTH_FAILED);
+
+        _aval.unlockFundCuota(tokens, true);
+
+        if (!_aval.hasCuotaPendiente()) {
+            // El aval ya no tiene cuotas pendientes, por lo que pasa a estado Finalizado.
+            _aval.updateStatus(Aval.Status.Finalizado);
+        }
+
+        if (
+            _aval.status() == Aval.Status.Finalizado ||
+            (_aval.hasReclamoVigente() && !_aval.hasCuotaEnMora())
+        ) {
+            // Como el aval está finalizado o
+            // Tiene un reclamo sin cuota en mora, se cierra el reclamo actual.
+            _aval.closeReclamo();
+        }
     }
 
     /**
@@ -268,31 +303,13 @@ contract Avaldao is AragonApp, Constants {
      * @param _token token habilitado como fondo de garantía.
      */
     function enableToken(address _token) external auth(ENABLE_TOKEN_ROLE) {
-        if (isTokenEnabled(_token)) {
-            // El token ya se encuentra habilitado.
-            return;
-        }
-        tokens.push(_token);
-    }
-
-    /**
-     * @notice Determina si token `_token` está habilitado como fondo de garantía.
-     * @param _token Token a determinar si está habilitado o no.
-     * @return true si está habilitado. false si no está habilitado.
-     */
-    function isTokenEnabled(address _token)
-        public
-        view
-        returns (bool isEnabled)
-    {
-        isEnabled = false;
         for (uint256 i = 0; i < tokens.length; i++) {
             if (tokens[i] == _token) {
-                // El token está habilitado.
-                isEnabled = true;
-                break;
+                // El token ya está habilitado.
+                return;
             }
         }
+        tokens.push(_token);
     }
 
     /**
@@ -359,6 +376,8 @@ contract Avaldao is AragonApp, Constants {
         avalAddress = address(aval);
     }
 
+    // Internal functions
+
     function _getAval(string _id) private view returns (Aval aval) {
         for (uint256 i = 0; i < avales.length; i++) {
             if (
@@ -368,23 +387,6 @@ contract Avaldao is AragonApp, Constants {
                 aval = avales[i];
                 break;
             }
-        }
-    }
-
-    /**
-     * @notice Obtiene el fondo del `_token` perteneciente al `_contractAddress`.
-     * @param _contractAddress dirección del contrato al cual pertenecen los fondos.
-     * @param _token token de los fondos.
-     */
-    function _getContractFundByToken(address _contractAddress, address _token)
-        internal
-        view
-        returns (uint256)
-    {
-        if (_token == ETH) {
-            return _contractAddress.balance;
-        } else {
-            return ERC20(_token).staticBalanceOf(_contractAddress);
         }
     }
 
@@ -487,6 +489,23 @@ contract Avaldao is AragonApp, Constants {
                 // Se transfiere el balance bloqueado desde el Vault hacia el Aval.
                 vault.transfer(token, address(_aval), tokenBalanceToTransfer);
             }
+        }
+    }
+
+    /**
+     * @notice Obtiene el fondo del `_token` perteneciente al `_contractAddress`.
+     * @param _contractAddress dirección del contrato al cual pertenecen los fondos.
+     * @param _token token de los fondos.
+     */
+    function _getContractFundByToken(address _contractAddress, address _token)
+        internal
+        view
+        returns (uint256)
+    {
+        if (_token == ETH) {
+            return _contractAddress.balance;
+        } else {
+            return ERC20(_token).staticBalanceOf(_contractAddress);
         }
     }
 }

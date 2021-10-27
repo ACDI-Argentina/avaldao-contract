@@ -110,7 +110,7 @@ contract Aval is Constants {
         uint256 _montoFiat,
         uint32 _timestampVencimiento,
         uint32 _timestampDesbloqueo
-    ) external onlyByAvaldaoContract {
+    ) public onlyByAvaldaoContract {
         cuotasCantidad = cuotasCantidad + 1;
         Cuota memory cuota;
         cuota.numero = cuotasCantidad;
@@ -122,53 +122,32 @@ contract Aval is Constants {
     }
 
     /**
-     * @notice Obtiene la cuota número `_numero` del Aval.
-     * @param _numero número de cuota requerida.
-     * @return Datos del Aval.
-     */
-    function getCuotaByNumero(uint8 _numero)
-        external
-        view
-        returns (
-            uint8 numero,
-            uint256 montoFiat,
-            uint32 timestampVencimiento,
-            uint32 timestampDesbloqueo,
-            CuotaStatus status
-        )
-    {
-        for (uint8 i = 0; i < cuotas.length; i++) {
-            if (cuotas[i].numero == _numero) {
-                numero = cuotas[i].numero;
-                montoFiat = cuotas[i].montoFiat;
-                timestampVencimiento = cuotas[i].timestampVencimiento;
-                timestampDesbloqueo = cuotas[i].timestampDesbloqueo;
-                status = cuotas[i].status;
-                break;
-            }
-        }
-    }
-
-    /**
      * @notice Desbloquea fondos del aval en `_tokens` equivalentes a una cuota y los retorna al Fondo de Garantía general.
      * @dev TODO Esta implementación asume que los token tienen el mismo valor que al momento de bloquearse en el aval.
      * @param _tokens tokens del fondo del aval.
+     * @param _force fuerza el desbloqueo de fondos aunque no se cumpla la fecha de desbloqueo o existan reclamos vigentes.
      */
-    function unlockFundCuota(address[] _tokens) public onlyByAvaldaoContract {
+    function unlockFundCuota(address[] _tokens, bool _force)
+        public
+        onlyByAvaldaoContract
+    {
         // El aval debe estar Vigente.
         require(status == Status.Vigente, ERROR_AVAL_NO_VIGENTE);
 
-        // El aval no debe tener un reclamo vigente para desbloquear los fondos.
-        require(_hasReclamoVigente() == false, ERROR_AVAL_CON_RECLAMO);
+        if (!_force) {
+            // El aval no debe tener un reclamo vigente para desbloquear los fondos.
+            require(hasReclamoVigente() == false, ERROR_AVAL_CON_RECLAMO);
+        }
 
         for (uint8 i1 = 0; i1 < cuotasCantidad; i1++) {
             Cuota storage cuota = cuotas[i1];
 
             // Una cuota es válida para desbloquear fondos si su estado es Pendiente
             // y la fecha actual es igual o mayor a la fecha de desbloqueo de fondos de la cuota.
+            // La condición por la fecha de desbloqueo se desestima si se requiere el desbloqueo de manera forzada.
             if (
                 cuota.status == CuotaStatus.Pendiente &&
-                cuota.timestampDesbloqueo <= block.timestamp
+                (_force || cuota.timestampDesbloqueo <= block.timestamp)
             ) {
                 uint256 montoFiatUnlock = 0;
                 for (uint8 i2 = 0; i2 < _tokens.length; i2++) {
@@ -240,11 +219,6 @@ contract Aval is Constants {
                 break;
             }
         }
-
-        if (!_hasCuotaPendiente()) {
-            // El aval ya no tiene cuotas pendientes, por lo que pasa a estado Finalizado.
-            updateStatus(Status.Finalizado);
-        }
     }
 
     /**
@@ -256,6 +230,18 @@ contract Aval is Constants {
     }
 
     /**
+     * @notice Cierra el reclamo actual si lo hubiera.
+     */
+    function closeReclamo() public onlyByAvaldaoContract {
+        for (uint8 i = 0; i < reclamos.length; i++) {
+            if (reclamos[i].status == ReclamoStatus.Vigente) {
+                reclamos[i].status = ReclamoStatus.Cerrado;
+                break;
+            }
+        }
+    }
+
+    /**
      * @dev Fallback Function.
      */
     function() external payable {
@@ -263,15 +249,39 @@ contract Aval is Constants {
     }
 
     /**
+     * @notice Obtiene la cuota número `_numero` del Aval.
+     * @param _numero número de cuota requerida.
+     * @return Datos del Aval.
+     */
+    function getCuotaByNumero(uint8 _numero)
+        external
+        view
+        returns (
+            uint8 numero,
+            uint256 montoFiat,
+            uint32 timestampVencimiento,
+            uint32 timestampDesbloqueo,
+            CuotaStatus status
+        )
+    {
+        for (uint8 i = 0; i < cuotas.length; i++) {
+            if (cuotas[i].numero == _numero) {
+                numero = cuotas[i].numero;
+                montoFiat = cuotas[i].montoFiat;
+                timestampVencimiento = cuotas[i].timestampVencimiento;
+                timestampDesbloqueo = cuotas[i].timestampDesbloqueo;
+                status = cuotas[i].status;
+                break;
+            }
+        }
+    }
+
+    /**
      * @notice Determina si el aval tiene o no una cuota en estado Pendiente.
      * @return <code>true</code> si tiene una cuota en estado Pendiente.
      * <code>false</code> si no tiene una cuota en estado Pendiente.
      */
-    function _hasCuotaPendiente()
-        internal
-        view
-        returns (bool hasCuotaPendiente)
-    {
+    function hasCuotaPendiente() public view returns (bool hasCuotaPendiente) {
         for (uint8 i = 0; i < cuotas.length; i++) {
             if (cuotas[i].status == CuotaStatus.Pendiente) {
                 hasCuotaPendiente = true;
@@ -280,18 +290,29 @@ contract Aval is Constants {
         }
     }
 
-    // Internal functions
+    /**
+     * @notice Determina si el aval tiene o no una cuota en mora.
+     * @return <code>true</code> si tiene una cuota en mora.
+     * <code>false</code> si no tiene una cuota en mora.
+     */
+    function hasCuotaEnMora() public view returns (bool hasCuotaEnMora) {
+        for (uint8 i = 0; i < cuotas.length; i++) {
+            if (
+                cuotas[i].status == CuotaStatus.Pendiente &&
+                cuotas[i].timestampVencimiento < block.timestamp
+            ) {
+                hasCuotaEnMora = true;
+                break;
+            }
+        }
+    }
 
     /**
      * @notice Determina si el aval tiene o no un reclamo en estado Vigente.
      * @return <code>true</code> si tiene un reclamo en estado Vigente.
      * <code>false</code> si no tiene un reclamo en estado Vigente.
      */
-    function _hasReclamoVigente()
-        internal
-        view
-        returns (bool hasReclamoVigente)
-    {
+    function hasReclamoVigente() public view returns (bool hasReclamoVigente) {
         for (uint8 i = 0; i < reclamos.length; i++) {
             if (reclamos[i].status == ReclamoStatus.Vigente) {
                 hasReclamoVigente = true;
@@ -299,6 +320,8 @@ contract Aval is Constants {
             }
         }
     }
+
+    // Internal functions
 
     /**
      * @notice Obtiene el fondo del `_token` perteneciente al `_contractAddress`.

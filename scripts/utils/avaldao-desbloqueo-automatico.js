@@ -66,7 +66,7 @@ async function main() {
     // Avaldao Contract
 
     var avaldaoContract = new web3.eth.Contract(AvaldaoJson.abi, avaldaoContractAddress);
-    await avaldaoContract.methods.unlockFund(avalAddress).send({
+    await avaldaoContract.methods.unlockFundAuto(avalAddress).send({
         from: avaldaoAddress,
         gas: 500000
     });
@@ -80,7 +80,7 @@ async function main() {
     console.log(events);*/
 
     /*var avaldaoContract = new web3.eth.Contract(AvaldaoJson.abi, avaldaoContractAddress);
-    const gasEstimated = await avaldaoContract.methods.unlockFund(avalAddress).estimateGas({
+    const gasEstimated = await avaldaoContract.methods.unlockFundAuto(avalAddress).estimateGas({
         from: avaldaoAddress
     });
     console.log(`  Gas estimated: ${gasEstimated}`);*/

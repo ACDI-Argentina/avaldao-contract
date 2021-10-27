@@ -6,7 +6,7 @@ const Aval = artifacts.require('Aval')
 const INFO_CID = 'Qmd4PvCKbFbbB8krxajCSeHdLXQamdt7yFxFxzTbedwiYM';
 
 const newAvaldao = async (deployer) => {
-  return await Avaldao.new({ from: deployer });
+  return await Avaldao.new({ from: deployer, gas: 9500000 });
 }
 
 const getAvales = async (avaldao) => {

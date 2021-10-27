@@ -31,6 +31,8 @@ npm run compile
 Se requiere mantener reducido el bytecode generado por el smart contract para no superar la restricción [EIP 170](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-170.md). El siguiente comando mide la cantidad de bytes generados para cada contrato compilado.
 
 ```
+docker run -it -v C:\dev\acdi\project\avaldao-contract:/home ubuntu
+cd home
 grep \"bytecode\" artifacts/* | awk '{print $1 " " length($3)/2}'
 ```
 
