@@ -84,7 +84,7 @@ contract('Avaldao App', (accounts) => {
 
             // Inicialización
             await vault.initialize()
-            await avaldao.initialize(vault.address, VERSION, CHAIN_ID, avaldaoContractAddress);
+            await avaldao.initialize(vault.address, "Avaldao", VERSION, CHAIN_ID, avaldaoContractAddress);
 
             // Se habilita el RBTC para mantener fondos de garantía.
             await avaldao.enableToken(RBTC, { from: deployerAddress });
@@ -115,7 +115,7 @@ contract('Avaldao App', (accounts) => {
 
         it('Falla al reinicializar', async () => {
 
-            await assertRevert(avaldao.initialize(vault.address, VERSION, CHAIN_ID, avaldao.address), errors.INIT_ALREADY_INITIALIZED)
+            await assertRevert(avaldao.initialize(vault.address, "Avaldao", VERSION, CHAIN_ID, avaldao.address), errors.INIT_ALREADY_INITIALIZED)
         })
     });
 
@@ -400,9 +400,26 @@ contract('Avaldao App', (accounts) => {
 
             assert.equal(avalEventId, updatedAvalEventId);
 
-            const updatedAval = await avaldao.getAval(avalId);
+            const updatedAvalAddress = await avaldao.getAvalAddress(avalId);
+            const updatedAval = await Aval.at(updatedAvalAddress);
+            const updatedAvalCuotasCantidad = await updatedAval.cuotasCantidad();
+            let updatedAvalCuotas = [];
+            for (let cuotaNumero = 1; cuotaNumero <= updatedAvalCuotasCantidad; cuotaNumero++) {
+                updatedAvalCuotas.push(await updatedAval.getCuotaByNumero(cuotaNumero));
 
-            assertAval(updatedAval, {
+            }
+            assertAval({
+                id: await updatedAval.id(),
+                infoCid: await updatedAval.infoCid(),
+                avaldao: await updatedAval.avaldao(),
+                solicitante: await updatedAval.solicitante(),
+                comerciante: await updatedAval.comerciante(),
+                avalado: await updatedAval.avalado(),
+                montoFiat: await updatedAval.montoFiat(),
+                cuotasCantidad: updatedAvalCuotasCantidad,
+                cuotas: updatedAvalCuotas,
+                status: await updatedAval.status(),
+            }, {
                 id: avalId,
                 infoCid: NEW_INFO_CID,
                 avaldao: avaldaoAddress,

@@ -112,7 +112,7 @@ module.exports = async ({ getNamedAccounts, deployments, getChainId }) => {
     // Inicialización
     await vault.initialize();
     await sleep();
-    await avaldao.initialize(vault.address, VERSION, CHAIN_ID, avaldao.address);
+    await avaldao.initialize(vault.address, "Avaldao", VERSION, CHAIN_ID, avaldao.address);
     await sleep();
 
     // ERC20 Token

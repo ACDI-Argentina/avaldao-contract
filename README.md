@@ -33,7 +33,7 @@ Se requiere mantener reducido el bytecode generado por el smart contract para no
 ```
 docker run -it -v C:\dev\acdi\project\avaldao-contract:/home ubuntu
 cd home
-grep \"bytecode\" artifacts/* | awk '{print $1 " " length($3)/2}'
+grep \"bytecode\" artifacts/Aval* | awk '{print $1 " " length($3)/2}'
 ```
 
 > La primera vez la compilación falla al no encontrar algunos smart contracts de Aragon, por ejemplo, es posible encontrarse con el siguiente error: *Error: BDLR700: Artifact for contract "Kernel" not found.* En este caso ejecutamos ```npm start```. Esto último a menudo muestra algún error, pero lo que importante es que compile los smart contracts faltantes. Una vez hecho esto volver a ejecutar ```npm run compile```.

@@ -72,6 +72,7 @@ contract Avaldao is AragonApp, Constants {
      */
     function initialize(
         Vault _vault,
+        string _name,
         string _version,
         uint256 _chainId,
         address _contractAddress
@@ -79,13 +80,14 @@ contract Avaldao is AragonApp, Constants {
         require(isContract(_vault), ERROR_VAULT_NOT_CONTRACT);
         vault = _vault;
 
-        DOMAIN_SEPARATOR = _hash(
-            EIP712Domain({
-                name: "Avaldao",
-                version: _version,
-                chainId: _chainId,
-                verifyingContract: _contractAddress
-            })
+        DOMAIN_SEPARATOR = keccak256(
+            abi.encode(
+                EIP712DOMAIN_TYPEHASH,
+                keccak256(bytes(_name)),
+                keccak256(bytes(_version)),
+                _chainId,
+                _contractAddress
+            )
         );
 
         initialized();
@@ -143,25 +145,23 @@ contract Avaldao is AragonApp, Constants {
      * @dev Los elementos de los array corresponden a los firmantes, 0:Solicitante, 1:Comerciante, 2:Avalado y 3:Avaldao.
      *
      * TODO Cambiar la interface, recibiendo el address en lugar del ID del Aval.
-     * @param _id identificador del aval a firmar.
+     * @param _aval aval a firmar.
      * @param _signV array con las variables V de las firmas de los participantes.
      * @param _signR array con las variables R de las firmas de los participantes.
      * @param _signS array con las variables S de las firmas de los participantes.
      */
     function signAval(
-        string _id,
+        Aval _aval,
         uint8[] _signV,
         bytes32[] _signR,
         bytes32[] _signS
     ) external {
-        Aval aval = _getAval(_id);
-
         // El aval solo puede firmarse por Avaldao.
-        require(aval.avaldao() == msg.sender, ERROR_AUTH_FAILED);
+        require(_aval.avaldao() == msg.sender, ERROR_AUTH_FAILED);
 
         // El aval solo puede firmarse si está completado.
         require(
-            aval.status() == Aval.Status.Completado,
+            _aval.status() == Aval.Status.Completado,
             ERROR_AVAL_NO_COMPLETADO
         );
 
@@ -178,15 +178,16 @@ contract Avaldao is AragonApp, Constants {
             abi.encodePacked(
                 "\x19\x01",
                 DOMAIN_SEPARATOR,
-                _hash(
-                    AvalSignable({
-                        id: aval.id(),
-                        infoCid: aval.infoCid(),
-                        avaldao: aval.avaldao(),
-                        solicitante: aval.solicitante(),
-                        comerciante: aval.comerciante(),
-                        avalado: aval.avalado()
-                    })
+                keccak256(
+                    abi.encode(
+                        AVAL_SIGNABLE_TYPEHASH,
+                        keccak256(bytes(_aval.id())),
+                        keccak256(bytes(_aval.infoCid())),
+                        _aval.avaldao(),
+                        _aval.solicitante(),
+                        _aval.comerciante(),
+                        _aval.avalado()
+                    )
                 )
             )
         );
@@ -197,7 +198,7 @@ contract Avaldao is AragonApp, Constants {
             _signV[SIGN_INDEX_SOLICITANTE],
             _signR[SIGN_INDEX_SOLICITANTE],
             _signS[SIGN_INDEX_SOLICITANTE],
-            aval.solicitante()
+            _aval.solicitante()
         );
 
         // Verficación de la firma del Comerciante.
@@ -206,7 +207,7 @@ contract Avaldao is AragonApp, Constants {
             _signV[SIGN_INDEX_COMERCIANTE],
             _signR[SIGN_INDEX_COMERCIANTE],
             _signS[SIGN_INDEX_COMERCIANTE],
-            aval.comerciante()
+            _aval.comerciante()
         );
 
         // Verficación de la firma del Avalado.
@@ -215,7 +216,7 @@ contract Avaldao is AragonApp, Constants {
             _signV[SIGN_INDEX_AVALADO],
             _signR[SIGN_INDEX_AVALADO],
             _signS[SIGN_INDEX_AVALADO],
-            aval.avalado()
+            _aval.avalado()
         );
 
         // Verficación de la firma del Avaldao.
@@ -224,17 +225,17 @@ contract Avaldao is AragonApp, Constants {
             _signV[SIGN_INDEX_AVALDAO],
             _signR[SIGN_INDEX_AVALDAO],
             _signS[SIGN_INDEX_AVALDAO],
-            aval.avaldao()
+            _aval.avaldao()
         );
 
         // Bloqueo de fondos.
-        _lockFund(aval);
+        _lockFund(_aval);
 
         // Se realizó la verificación de todas las firmas y se bloquearon los fondos
         // por lo que el aval pasa a estado Vigente.
-        aval.updateStatus(Aval.Status.Vigente);
+        _aval.updateStatus(Aval.Status.Vigente);
 
-        emit SignAval(_id);
+        emit SignAval(_aval.id());
     }
 
     /**
@@ -283,22 +284,6 @@ contract Avaldao is AragonApp, Constants {
     }
 
     /**
-     * @notice Obtiene el monto disponible en moneda FIAT del fondo de garantía.
-     */
-    function getAvailableFundFiat() public view returns (uint256) {
-        uint256 availableFundFiat = 0;
-        for (uint256 i = 0; i < tokens.length; i++) {
-            address token = tokens[i];
-            uint256 tokenAvailableFund = _getContractFundByToken(vault, token);
-            uint256 tokenRate = exchangeRateProvider.getExchangeRate(token);
-            availableFundFiat = availableFundFiat.add(
-                tokenAvailableFund.div(tokenRate)
-            );
-        }
-        return availableFundFiat;
-    }
-
-    /**
      * @notice Habilita el token `_token` como fondo de garantía.
      * @param _token token habilitado como fondo de garantía.
      */
@@ -325,42 +310,27 @@ contract Avaldao is AragonApp, Constants {
     // Getters functions
 
     /**
+     * @notice Obtiene el monto disponible en moneda FIAT del fondo de garantía.
+     */
+    function getAvailableFundFiat() public view returns (uint256) {
+        uint256 availableFundFiat = 0;
+        for (uint256 i = 0; i < tokens.length; i++) {
+            address token = tokens[i];
+            uint256 tokenAvailableFund = vault.balance(token);
+            uint256 tokenRate = exchangeRateProvider.getExchangeRate(token);
+            availableFundFiat = availableFundFiat.add(
+                tokenAvailableFund.div(tokenRate)
+            );
+        }
+        return availableFundFiat;
+    }
+
+    /**
      * @notice Obtiene todos los identificadores de Avales.
      * @return Arreglo con todos los identificadores de Avales.
      */
     function getAvalIds() external view returns (string[]) {
         return avalesIds;
-    }
-
-    /**
-     * @notice Obtiene el Aval cuyo identificador coincide con `_id`.
-     * @return Datos del Aval.
-     */
-    function getAval(string _id)
-        external
-        view
-        returns (
-            string id,
-            string infoCid,
-            address avaldao,
-            address solicitante,
-            address comerciante,
-            address avalado,
-            uint256 montoFiat,
-            uint256 cuotasCantidad,
-            Aval.Status status
-        )
-    {
-        Aval aval = _getAval(_id);
-        id = aval.id();
-        infoCid = aval.infoCid();
-        avaldao = aval.avaldao();
-        solicitante = aval.solicitante();
-        comerciante = aval.comerciante();
-        avalado = aval.avalado();
-        montoFiat = aval.montoFiat();
-        cuotasCantidad = aval.cuotasCantidad();
-        status = aval.status();
     }
 
     /**
@@ -372,23 +342,18 @@ contract Avaldao is AragonApp, Constants {
         view
         returns (address avalAddress)
     {
-        Aval aval = _getAval(_id);
-        avalAddress = address(aval);
-    }
-
-    // Internal functions
-
-    function _getAval(string _id) private view returns (Aval aval) {
         for (uint256 i = 0; i < avales.length; i++) {
             if (
                 keccak256(abi.encodePacked(avales[i].id())) ==
                 keccak256(abi.encodePacked(_id))
             ) {
-                aval = avales[i];
+                avalAddress = address(avales[i]);
                 break;
             }
         }
     }
+
+    // Internal functions
 
     /**
      * Verifica que el signer haya firmado el hash. La firma se especifica por las variables V, R y S.
@@ -417,34 +382,6 @@ contract Avaldao is AragonApp, Constants {
         require(signerRecovered == _signer, ERROR_INVALID_SIGN);
     }
 
-    function _hash(EIP712Domain eip712Domain) internal pure returns (bytes32) {
-        return
-            keccak256(
-                abi.encode(
-                    EIP712DOMAIN_TYPEHASH,
-                    keccak256(bytes(eip712Domain.name)),
-                    keccak256(bytes(eip712Domain.version)),
-                    eip712Domain.chainId,
-                    eip712Domain.verifyingContract
-                )
-            );
-    }
-
-    function _hash(AvalSignable avalSignable) internal pure returns (bytes32) {
-        return
-            keccak256(
-                abi.encode(
-                    AVAL_SIGNABLE_TYPEHASH,
-                    keccak256(bytes(avalSignable.id)),
-                    keccak256(bytes(avalSignable.infoCid)),
-                    avalSignable.avaldao,
-                    avalSignable.solicitante,
-                    avalSignable.comerciante,
-                    avalSignable.avalado
-                )
-            );
-    }
-
     /**
      * @notice bloquea fondos desde el fondo de garantía en el aval especificado.
      *
@@ -465,7 +402,7 @@ contract Avaldao is AragonApp, Constants {
             }
             address token = tokens[i];
             uint256 tokenRate = exchangeRateProvider.getExchangeRate(token);
-            uint256 tokenBalance = _getContractFundByToken(vault, token);
+            uint256 tokenBalance = vault.balance(token);
             uint256 tokenBalanceFiat = tokenBalance.div(tokenRate);
             uint256 tokenBalanceToTransfer;
 
@@ -489,23 +426,6 @@ contract Avaldao is AragonApp, Constants {
                 // Se transfiere el balance bloqueado desde el Vault hacia el Aval.
                 vault.transfer(token, address(_aval), tokenBalanceToTransfer);
             }
-        }
-    }
-
-    /**
-     * @notice Obtiene el fondo del `_token` perteneciente al `_contractAddress`.
-     * @param _contractAddress dirección del contrato al cual pertenecen los fondos.
-     * @param _token token de los fondos.
-     */
-    function _getContractFundByToken(address _contractAddress, address _token)
-        internal
-        view
-        returns (uint256)
-    {
-        if (_token == ETH) {
-            return _contractAddress.balance;
-        } else {
-            return ERC20(_token).staticBalanceOf(_contractAddress);
         }
     }
 }

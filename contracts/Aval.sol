@@ -65,6 +65,7 @@ contract Aval is Constants {
     Status public status; // Estado del aval.
 
     event Received(address, uint256);
+    event AvalCuotaUnlock(address aval, uint8 numeroCuota);
 
     /**
      * @notice solo Avaldao Contract tiene acceso.
@@ -216,6 +217,7 @@ contract Aval is Constants {
                 // Como se desbloquean los fondos, se asume que la cuota ha sido pagada.
                 cuota.status = CuotaStatus.Pagada;
 
+                emit AvalCuotaUnlock(address(this), cuota.numero);
                 break;
             }
         }
