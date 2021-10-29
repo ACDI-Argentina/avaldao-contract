@@ -23,7 +23,7 @@ contract Avaldao is AragonApp, Constants {
         address verifyingContract;
     }
     struct AvalSignable {
-        string id;
+        address aval;
         string infoCid;
         address avaldao;
         address solicitante;
@@ -43,7 +43,7 @@ contract Avaldao is AragonApp, Constants {
         );
     bytes32 constant AVAL_SIGNABLE_TYPEHASH =
         keccak256(
-            "AvalSignable(string id,string infoCid,address avaldao,address solicitante,address comerciante,address avalado)"
+            "AvalSignable(address aval,string infoCid,address avaldao,address solicitante,address comerciante,address avalado)"
         );
 
     /**
@@ -181,7 +181,7 @@ contract Avaldao is AragonApp, Constants {
                 keccak256(
                     abi.encode(
                         AVAL_SIGNABLE_TYPEHASH,
-                        keccak256(bytes(_aval.id())),
+                        address(_aval),
                         keccak256(bytes(_aval.infoCid())),
                         _aval.avaldao(),
                         _aval.solicitante(),
