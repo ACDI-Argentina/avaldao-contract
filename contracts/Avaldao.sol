@@ -3,9 +3,9 @@ pragma experimental ABIEncoderV2;
 
 import "@aragon/os/contracts/apps/AragonApp.sol";
 import "@aragon/os/contracts/lib/math/SafeMath.sol";
-import "@aragon/apps-vault/contracts/Vault.sol";
 import "./Constants.sol";
 import "./Aval.sol";
+import "./FondoGarantiaVault.sol";
 import "./ExchangeRateProvider.sol";
 
 /**
@@ -47,18 +47,12 @@ contract Avaldao is AragonApp, Constants {
         );
 
     /**
-     * @dev Almacena los tokens permitidos para reunir fondos de garantía.
-     */
-    address[] tokens;
-
-    /**
      * Avales de Avaldao.
      */
     string[] public avalesIds;
     Aval[] public avales;
 
-    ExchangeRateProvider public exchangeRateProvider;
-    Vault public vault;
+    FondoGarantiaVault public vault;
 
     event SaveAval(string id);
     event SignAval(string id);
@@ -71,7 +65,7 @@ contract Avaldao is AragonApp, Constants {
      * @param _contractAddress dirección del smart contract (proxy Aragon).
      */
     function initialize(
-        Vault _vault,
+        FondoGarantiaVault _vault,
         string _name,
         string _version,
         uint256 _chainId,
@@ -248,7 +242,7 @@ contract Avaldao is AragonApp, Constants {
         // El sender debe ser Avaldao.
         require(_aval.avaldao() == msg.sender, ERROR_AUTH_FAILED);
 
-        _aval.unlockFundCuota(tokens, false);
+        _aval.unlockFundCuota(vault.getTokens(), false);
 
         if (!_aval.hasCuotaPendiente()) {
             // El aval ya no tiene cuotas pendientes, por lo que pasa a estado Finalizado.
@@ -266,7 +260,7 @@ contract Avaldao is AragonApp, Constants {
         // El sender debe ser el Solicitante.
         require(_aval.solicitante() == msg.sender, ERROR_AUTH_FAILED);
 
-        _aval.unlockFundCuota(tokens, true);
+        _aval.unlockFundCuota(vault.getTokens(), true);
 
         if (!_aval.hasCuotaPendiente()) {
             // El aval ya no tiene cuotas pendientes, por lo que pasa a estado Finalizado.
@@ -283,47 +277,7 @@ contract Avaldao is AragonApp, Constants {
         }
     }
 
-    /**
-     * @notice Habilita el token `_token` como fondo de garantía.
-     * @param _token token habilitado como fondo de garantía.
-     */
-    function enableToken(address _token) external auth(ENABLE_TOKEN_ROLE) {
-        for (uint256 i = 0; i < tokens.length; i++) {
-            if (tokens[i] == _token) {
-                // El token ya está habilitado.
-                return;
-            }
-        }
-        tokens.push(_token);
-    }
-
-    /**
-     * @notice Setea el Exchange Rate Provider.
-     */
-    function setExchangeRateProvider(ExchangeRateProvider _exchangeRateProvider)
-        external
-        auth(SET_EXCHANGE_RATE_PROVIDER)
-    {
-        exchangeRateProvider = _exchangeRateProvider;
-    }
-
     // Getters functions
-
-    /**
-     * @notice Obtiene el monto disponible en moneda FIAT del fondo de garantía.
-     */
-    function getAvailableFundFiat() public view returns (uint256) {
-        uint256 availableFundFiat = 0;
-        for (uint256 i = 0; i < tokens.length; i++) {
-            address token = tokens[i];
-            uint256 tokenAvailableFund = vault.balance(token);
-            uint256 tokenRate = exchangeRateProvider.getExchangeRate(token);
-            availableFundFiat = availableFundFiat.add(
-                tokenAvailableFund.div(tokenRate)
-            );
-        }
-        return availableFundFiat;
-    }
 
     /**
      * @notice Obtiene todos los identificadores de Avales.
@@ -390,18 +344,22 @@ contract Avaldao is AragonApp, Constants {
     function _lockFund(Aval _aval) internal {
         // Debe haber fondos suficientes para garantizar el aval.
         require(
-            _aval.montoFiat() <= getAvailableFundFiat(),
+            _aval.montoFiat() <= vault.getTokensBalanceFiat(),
             ERROR_AVAL_FONDOS_INSUFICIENTES
         );
 
+        address[] memory tokens = vault.getTokens();
         uint256 montoFiatLock = 0;
         for (uint256 i = 0; i < tokens.length; i++) {
             if (montoFiatLock >= _aval.montoFiat()) {
                 // Se alcanzó el monto bloqueado para el aval.
                 break;
             }
+            // TODO Obtener estos datos con vault.getTokenBalance.
             address token = tokens[i];
-            uint256 tokenRate = exchangeRateProvider.getExchangeRate(token);
+            uint256 tokenRate = vault.exchangeRateProvider().getExchangeRate(
+                token
+            );
             uint256 tokenBalance = vault.balance(token);
             uint256 tokenBalanceFiat = tokenBalance.div(tokenRate);
             uint256 tokenBalanceToTransfer;

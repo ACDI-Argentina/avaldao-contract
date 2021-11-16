@@ -158,6 +158,7 @@ contract Aval is Constants {
                     }
                     address token = _tokens[i2];
                     uint256 tokenRate = avaldaoContract
+                        .vault()
                         .exchangeRateProvider()
                         .getExchangeRate(token);
                     uint256 tokenBalance = _getContractFundByToken(

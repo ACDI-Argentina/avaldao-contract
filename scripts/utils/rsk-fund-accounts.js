@@ -1,7 +1,7 @@
 var Web3 = require('web3');
 var network = "http://localhost:4444";
 
-var VaultJson = require('../../artifacts/Vault.json');
+var FondoGarantiaVaultJson = require('../../artifacts/FondoGarantiaVault.json');
 var ERC20Json = require('../../artifacts/ERC20.json');
 
 // Vault Contract
@@ -42,7 +42,7 @@ async function main() {
     var value = web3.utils.toWei('1');
 
     // Vault
-    var vault = new web3.eth.Contract(VaultJson.abi, vaultAddress);
+    var vault = new web3.eth.Contract(FondoGarantiaVaultJson.abi, vaultAddress);
     await vault.methods.deposit(RBTC, value).send({
         value: value,
         from: from
