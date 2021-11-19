@@ -65,8 +65,8 @@ async function main() {
 
     // Avaldao Contract
 
-    var avaldaoContract = new web3.eth.Contract(AvaldaoJson.abi, avaldaoContractAddress);
-    await avaldaoContract.methods.unlockFundAuto(avalAddress).send({
+    var avalContract = new web3.eth.Contract(AvalJson.abi, avalAddress);
+    await avalContract.methods.unlockFundAuto().send({
         from: avaldaoAddress,
         gas: 500000
     });

@@ -6,7 +6,7 @@ const { assertAval } = require('./helpers/asserts')
 const { createPermission, grantPermission } = require('../scripts/permissions')
 const { errors } = require('./helpers/errors')
 const Avaldao = artifacts.require('Avaldao')
-const Vault = artifacts.require('Vault')
+const FondoGarantiaVault = artifacts.require('FondoGarantiaVault')
 //Price providers
 const ExchangeRateProvider = artifacts.require('ExchangeRateProvider')
 const MoCStateMock = artifacts.require('./mocks/MoCStateMock')
@@ -43,7 +43,7 @@ contract('Avaldao App', (accounts) => {
     ] = accounts;
 
     let avaldaoBase, avaldao;
-    let vaultBase, vault;
+    let fondoGarantiaVaultBase, fondoGarantiaVault;
     let RBTC;
     let RBTC_PRICE;
     let RIF_PRICE;
@@ -52,7 +52,7 @@ contract('Avaldao App', (accounts) => {
 
     before(async () => {
         avaldaoBase = await newAvaldao(deployerAddress);
-        vaultBase = await Vault.new({ from: deployerAddress });
+        fondoGarantiaVaultBase = await FondoGarantiaVault.new({ from: deployerAddress });
         // Setup constants
         SET_EXCHANGE_RATE_PROVIDER = await avaldaoBase.SET_EXCHANGE_RATE_PROVIDER();
         CREATE_AVAL_ROLE = await avaldaoBase.CREATE_AVAL_ROLE();
@@ -66,56 +66,50 @@ contract('Avaldao App', (accounts) => {
 
     beforeEach(async () => {
 
-        try {
+        // Deploy de la DAO
+        const { dao, acl } = await newDao(deployerAddress);
 
-            // Deploy de la DAO
-            const { dao, acl } = await newDao(deployerAddress);
+        // Deploy de contratos y proxies
+        const avaldaoContractAddress = await newApp(dao, "avaldao", avaldaoBase.address, deployerAddress);
+        const vaultAddress = await newApp(dao, "fondoGarantiaVault", fondoGarantiaVaultBase.address, deployerAddress);
+        avaldao = await Avaldao.at(avaldaoContractAddress);
+        fondoGarantiaVault = await FondoGarantiaVault.at(vaultAddress);
 
-            // Deploy de contratos y proxies
-            const avaldaoContractAddress = await newApp(dao, "avaldao", avaldaoBase.address, deployerAddress);
-            const vaultAddress = await newApp(dao, "vault", vaultBase.address, deployerAddress);
-            avaldao = await Avaldao.at(avaldaoContractAddress);
-            vault = await Vault.at(vaultAddress);
+        // Configuración de permisos
+        await createPermission(acl, deployerAddress, fondoGarantiaVault.address, SET_EXCHANGE_RATE_PROVIDER, deployerAddress);
+        await createPermission(acl, deployerAddress, fondoGarantiaVault.address, ENABLE_TOKEN_ROLE, deployerAddress);
+        await createPermission(acl, solicitanteAddress, avaldao.address, CREATE_AVAL_ROLE, deployerAddress);
 
-            // Configuración de permisos
-            await createPermission(acl, deployerAddress, avaldao.address, SET_EXCHANGE_RATE_PROVIDER, deployerAddress);
-            await createPermission(acl, deployerAddress, avaldao.address, ENABLE_TOKEN_ROLE, deployerAddress);
-            await createPermission(acl, solicitanteAddress, avaldao.address, CREATE_AVAL_ROLE, deployerAddress);
+        // Inicialización
+        await fondoGarantiaVault.initialize()
+        await avaldao.initialize(fondoGarantiaVault.address, "Avaldao", VERSION, CHAIN_ID, avaldaoContractAddress);
 
-            // Inicialización
-            await vault.initialize()
-            await avaldao.initialize(vault.address, "Avaldao", VERSION, CHAIN_ID, avaldaoContractAddress);
+        // Se habilita el RBTC para mantener fondos de garantía.
+        await fondoGarantiaVault.enableToken(RBTC, { from: deployerAddress });
 
-            // Se habilita el RBTC para mantener fondos de garantía.
-            await avaldao.enableToken(RBTC, { from: deployerAddress });
+        //Inicializacion de Token y Price Provider
 
-            //Inicializacion de Token y Price Provider
+        const rifTokenMock = await RifTokenMock.new({ from: deployerAddress });
+        const docTokenMock = await DocTokenMock.new({ from: deployerAddress });
 
-            const rifTokenMock = await RifTokenMock.new({ from: deployerAddress });
-            const docTokenMock = await DocTokenMock.new({ from: deployerAddress });
+        const moCStateMock = await MoCStateMock.new(RBTC_PRICE);
+        const roCStateMock = await RoCStateMock.new(RIF_PRICE);
+        const exchangeRateProvider = await ExchangeRateProvider.new(
+            moCStateMock.address,
+            roCStateMock.address,
+            rifTokenMock.address,
+            docTokenMock.address,
+            DOC_PRICE,
+            { from: deployerAddress });
 
-            const moCStateMock = await MoCStateMock.new(RBTC_PRICE);
-            const roCStateMock = await RoCStateMock.new(RIF_PRICE);
-            const exchangeRateProvider = await ExchangeRateProvider.new(
-                moCStateMock.address,
-                roCStateMock.address,
-                rifTokenMock.address,
-                docTokenMock.address,
-                DOC_PRICE,
-                { from: deployerAddress });
-
-            await avaldao.setExchangeRateProvider(exchangeRateProvider.address);
-
-        } catch (err) {
-            console.error(err);
-        }
+        await fondoGarantiaVault.setExchangeRateProvider(exchangeRateProvider.address);
     });
 
     context('Inicialización', function () {
 
         it('Falla al reinicializar', async () => {
 
-            await assertRevert(avaldao.initialize(vault.address, "Avaldao", VERSION, CHAIN_ID, avaldao.address), errors.INIT_ALREADY_INITIALIZED)
+            await assertRevert(avaldao.initialize(fondoGarantiaVault.address, "Avaldao", VERSION, CHAIN_ID, avaldao.address), errors.INIT_ALREADY_INITIALIZED)
         })
     });
 
@@ -597,10 +591,10 @@ contract('Avaldao App', (accounts) => {
 
         it('Fondo de garantía cero', async () => {
 
-            const availableFundFiatExpected = new BN('0');
-            const availableFundFiat = await avaldao.getTokensBalanceFiat();
+            const tokensBalanceFiatExpected = new BN('0');
+            const tokensBalanceFiat = await fondoGarantiaVault.getTokensBalanceFiat();
 
-            assert.equal(availableFundFiat.toString(), availableFundFiatExpected.toString());
+            assert.equal(tokensBalanceFiat.toString(), tokensBalanceFiatExpected.toString());
         });
     });
 })

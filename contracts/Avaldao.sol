@@ -58,6 +58,22 @@ contract Avaldao is AragonApp, Constants {
     event SignAval(string id);
 
     /**
+     * @notice solo un Aval registrado tiene acceso.
+     *
+     */
+    modifier onlyByAval() {
+        bool isAval = false;
+        for (uint256 i = 0; i < avales.length; i++) {
+            if (msg.sender == address(avales[i])) {
+                isAval = true;
+                break;
+            }
+        }
+        require(isAval, ERROR_AUTH_FAILED);
+        _;
+    }
+
+    /**
      * @notice Inicializa el Avaldao App con el Vault `_vault`.
      * @param _vault Address del Vault con los fondos de garantía general.
      * @param _version versión del smart contract.
@@ -223,7 +239,7 @@ contract Avaldao is AragonApp, Constants {
         );
 
         // Bloqueo de fondos.
-        _lockFund(_aval);
+        _aval.lockFund();
 
         // Se realizó la verificación de todas las firmas y se bloquearon los fondos
         // por lo que el aval pasa a estado Vigente.
@@ -233,48 +249,17 @@ contract Avaldao is AragonApp, Constants {
     }
 
     /**
-     * @notice desbloquea fondos del `_aval` equivalentes a una cuota, preparado para ejecutarse automáticamente cada cierto período.
-     * Los fondos son retornados al fondo de garantía general.
-     * @dev TODO Esta implementación asume que los token tienen el mismo valor que al momento de bloquearse en el aval.
-     * @param _aval aval desde donde se desbloquean los fondos.
+     * @notice transfiere `_amount` `_token` al `_aval` desde el fondo de garantía.
+     * @param _token token a transferir.
+     * @param _amount cantidad del token a transferir.
+     * @param _aval aval al cual se transfiere el token.
      */
-    function unlockFundAuto(Aval _aval) external {
-        // El sender debe ser Avaldao.
-        require(_aval.avaldao() == msg.sender, ERROR_AUTH_FAILED);
-
-        _aval.unlockFundCuota(vault.getTokens(), false);
-
-        if (!_aval.hasCuotaPendiente()) {
-            // El aval ya no tiene cuotas pendientes, por lo que pasa a estado Finalizado.
-            _aval.updateStatus(Aval.Status.Finalizado);
-        }
-    }
-
-    /**
-     * @notice desbloquea fondos del `_aval` equivalentes a una cuota, preparado para ejecutarse de manera manual por el solicitante.
-     * Los fondos son retornados al fondo de garantía general.
-     * @dev TODO Esta implementación asume que los token tienen el mismo valor que al momento de bloquearse en el aval.
-     * @param _aval aval desde donde se desbloquean los fondos.
-     */
-    function unlockFundManual(Aval _aval) external {
-        // El sender debe ser el Solicitante.
-        require(_aval.solicitante() == msg.sender, ERROR_AUTH_FAILED);
-
-        _aval.unlockFundCuota(vault.getTokens(), true);
-
-        if (!_aval.hasCuotaPendiente()) {
-            // El aval ya no tiene cuotas pendientes, por lo que pasa a estado Finalizado.
-            _aval.updateStatus(Aval.Status.Finalizado);
-        }
-
-        if (
-            _aval.status() == Aval.Status.Finalizado ||
-            (_aval.hasReclamoVigente() && !_aval.hasCuotaEnMora())
-        ) {
-            // Como el aval está finalizado o
-            // Tiene un reclamo sin cuota en mora, se cierra el reclamo actual.
-            _aval.closeReclamo();
-        }
+    function transferFund(
+        address _token,
+        uint256 _amount,
+        Aval _aval
+    ) public onlyByAval {
+        vault.transfer(_token, address(_aval), _amount);
     }
 
     // Getters functions
@@ -334,56 +319,5 @@ contract Avaldao is AragonApp, Constants {
         );
         // La firma recuperada debe ser igual al firmante especificado.
         require(signerRecovered == _signer, ERROR_INVALID_SIGN);
-    }
-
-    /**
-     * @notice bloquea fondos desde el fondo de garantía en el aval especificado.
-     *
-     * @param _aval donde se bloquean los fondos.
-     */
-    function _lockFund(Aval _aval) internal {
-        // Debe haber fondos suficientes para garantizar el aval.
-        require(
-            _aval.montoFiat() <= vault.getTokensBalanceFiat(),
-            ERROR_AVAL_FONDOS_INSUFICIENTES
-        );
-
-        address[] memory tokens = vault.getTokens();
-        uint256 montoFiatLock = 0;
-        for (uint256 i = 0; i < tokens.length; i++) {
-            if (montoFiatLock >= _aval.montoFiat()) {
-                // Se alcanzó el monto bloqueado para el aval.
-                break;
-            }
-            // TODO Obtener estos datos con vault.getTokenBalance.
-            address token = tokens[i];
-            uint256 tokenRate = vault.exchangeRateProvider().getExchangeRate(
-                token
-            );
-            uint256 tokenBalance = vault.balance(token);
-            uint256 tokenBalanceFiat = tokenBalance.div(tokenRate);
-            uint256 tokenBalanceToTransfer;
-
-            if (montoFiatLock.add(tokenBalanceFiat) < _aval.montoFiat()) {
-                // Con el balance se garantiza una parte del fondo requerido.
-                // Se transfiere todo el balance.
-                tokenBalanceToTransfer = tokenBalance;
-                montoFiatLock = montoFiatLock.add(tokenBalanceFiat);
-            } else {
-                // Con el balance del token se garantiza el fondo requerido.
-                // Se obtiene la diferencia entre el monto objetivo
-                // y el monto bloqueado hasta el momento.
-                uint256 montoFiatDiff = _aval.montoFiat().sub(montoFiatLock);
-                // Se transfiere solo el balance necesario para llegar al objetivo.
-                tokenBalanceToTransfer = montoFiatDiff.mul(tokenRate);
-                // Se alcanzó el monto objetivo.
-                montoFiatLock = montoFiatLock.add(montoFiatDiff);
-            }
-
-            if (tokenBalanceToTransfer > 0) {
-                // Se transfiere el balance bloqueado desde el Vault hacia el Aval.
-                vault.transfer(token, address(_aval), tokenBalanceToTransfer);
-            }
-        }
     }
 }

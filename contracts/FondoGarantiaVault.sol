@@ -51,16 +51,16 @@ contract FondoGarantiaVault is Vault, Constants {
      * @notice Obtiene el monto disponible en moneda FIAT del fondo de garantía.
      */
     function getTokensBalanceFiat() public view returns (uint256) {
-        uint256 availableFundFiat = 0;
+        uint256 tokensBalanceFiat = 0;
         for (uint256 i = 0; i < tokens.length; i++) {
             address token = tokens[i];
-            uint256 tokenAvailableFund = balance(token);
+            uint256 tokenBalance = balance(token);
             uint256 tokenRate = exchangeRateProvider.getExchangeRate(token);
-            availableFundFiat = availableFundFiat.add(
-                tokenAvailableFund.div(tokenRate)
+            tokensBalanceFiat = tokensBalanceFiat.add(
+                tokenBalance.div(tokenRate)
             );
         }
-        return availableFundFiat;
+        return tokensBalanceFiat;
     }
 
     /**
