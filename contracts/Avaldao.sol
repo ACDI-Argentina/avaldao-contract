@@ -125,7 +125,10 @@ contract Avaldao is AragonApp, Constants {
         uint8 cuotasCantidad = uint8(_timestampCuotas.length.div(2));
 
         // El monto debe ser múltiplo de la cantidad de cuotas.
-        require(_montoFiat.mod(cuotasCantidad) == 0, ERROR_CUOTAS_INVALIDAS);
+        require(
+            _montoFiat.mod(cuotasCantidad) == 0,
+            ERROR_AVAL_CUOTAS_INVALIDAS
+        );
 
         // Si no se realiza este copiado, el smart contract no compila con el siguiente error:
         // UnimplementedFeatureError: Only byte arrays can be encoded from calldata currently.
@@ -172,7 +175,7 @@ contract Avaldao is AragonApp, Constants {
         // El aval solo puede firmarse si está completado.
         require(
             _aval.status() == Aval.Status.Completado,
-            ERROR_AVAL_NO_COMPLETADO
+            ERROR_AVAL_INVALID_STATUS
         );
 
         // Verifica que estén las firmas de todos lo firmantes.
@@ -318,6 +321,6 @@ contract Avaldao is AragonApp, Constants {
             _signS
         );
         // La firma recuperada debe ser igual al firmante especificado.
-        require(signerRecovered == _signer, ERROR_INVALID_SIGN);
+        require(signerRecovered == _signer, ERROR_AVAL_INVALID_SIGN);
     }
 }

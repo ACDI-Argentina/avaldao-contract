@@ -66,6 +66,8 @@ contract Aval is Constants {
 
     event Received(address, uint256);
     event AvalCuotaUnlock(address aval, uint8 numeroCuota);
+    event AvalReclamoOpen(address aval, uint8 numeroReclamo);
+    event AvalReclamoClose(address aval, uint8 numeroReclamo);
 
     /**
      * @notice solo Avaldao Contract tiene acceso.
@@ -168,7 +170,11 @@ contract Aval is Constants {
 
             if (tokenBalanceToTransfer > 0) {
                 // Se transfiere el balance bloqueado desde el Vault hacia el Aval.
-                avaldaoContract.transferFund(token, tokenBalanceToTransfer, this);
+                avaldaoContract.transferFund(
+                    token,
+                    tokenBalanceToTransfer,
+                    this
+                );
             }
         }
     }
@@ -225,12 +231,47 @@ contract Aval is Constants {
     }
 
     /**
+     * Abre un nuevo reclamo del aval.
+     */
+    function openReclamo() external {
+        // El sender debe ser el Comerciante.
+        require(comerciante == msg.sender, ERROR_AUTH_FAILED);
+        // El aval solo puede reclamarse si está vigente.
+        require(status == Status.Vigente, ERROR_AVAL_INVALID_STATUS);
+        // El aval no debe tener un reclamo vigente para abrir un nuevo reclamo.
+        require(hasReclamoVigente() == false, ERROR_AVAL_CON_RECLAMO);
+        // La fecha actual debe ser mayor a la fecha de vencimiento de la primera cuota Pendiente.
+        bool hasCuotaPendienteVencida = false;
+        for (uint8 i = 0; i < cuotasCantidad; i++) {
+            Cuota storage cuota = cuotas[i];
+            if (
+                cuota.status == CuotaStatus.Pendiente &&
+                cuota.timestampVencimiento <= block.timestamp
+            ) {
+                hasCuotaPendienteVencida = true;
+                break;
+            }
+        }
+        require(
+            hasCuotaPendienteVencida == true,
+            ERROR_AVAL_SIN_CUOTA_PENDIENTE_VENCIDA
+        );
+        // El aval es reclamable, por lo que se crea el reclamo.
+        Reclamo memory reclamo;
+        reclamo.numero = uint8(reclamos.length + 1);
+        reclamo.status = ReclamoStatus.Vigente;
+        reclamos.push(reclamo);
+        emit AvalReclamoOpen(address(this), reclamo.numero);
+    }
+
+    /**
      * @notice Cierra el reclamo actual si lo hubiera.
      */
     function closeReclamo() public onlyByAvaldaoContract {
         for (uint8 i = 0; i < reclamos.length; i++) {
             if (reclamos[i].status == ReclamoStatus.Vigente) {
                 reclamos[i].status = ReclamoStatus.Cerrado;
+                emit AvalReclamoClose(address(this), reclamos[i].numero);
                 break;
             }
         }
@@ -325,7 +366,7 @@ contract Aval is Constants {
      */
     function _unlockFundCuota(bool _force) internal {
         // El aval debe estar Vigente.
-        require(status == Status.Vigente, ERROR_AVAL_NO_VIGENTE);
+        require(status == Status.Vigente, ERROR_AVAL_INVALID_STATUS);
 
         if (!_force) {
             // El aval no debe tener un reclamo vigente para desbloquear los fondos.

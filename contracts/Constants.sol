@@ -24,16 +24,18 @@ contract Constants is EtherTokenConstant {
         "AVALDAO_TOKEN_APPROVE_FAILED";
     string internal constant ERROR_VAULT_NOT_CONTRACT =
         "AVALDAO_VAULT_NOT_CONTRACT";
-    string internal constant ERROR_INVALID_SIGN = "AVALDAO_INVALID_SIGN";
-    string internal constant ERROR_AVAL_NO_COMPLETADO =
-        "AVALDAO_AVAL_NO_COMPLETADO";
+    string internal constant ERROR_AVAL_INVALID_SIGN =
+        "AVALDAO_AVAL_INVALID_SIGN";
+    string internal constant ERROR_AVAL_INVALID_STATUS =
+        "AVALDAO_AVAL_INVALID_STATUS";
     string internal constant ERROR_AVAL_FONDOS_INSUFICIENTES =
         "AVALDAO_AVAL_FONDOS_INSUFICIENTES";
     string internal constant ERROR_AVAL_FALTAN_FIRMAS =
         "AVALDAO_AVAL_FALTAN_FIRMAS";
-    string internal constant ERROR_CUOTAS_INVALIDAS =
+    string internal constant ERROR_AVAL_CUOTAS_INVALIDAS =
         "AVALDAO_AVAL_CUOTAS_INVALIDAS";
-    string internal constant ERROR_AVAL_NO_VIGENTE = "AVALDAO_AVAL_NO_VIGENTE";
     string internal constant ERROR_AVAL_CON_RECLAMO =
         "AVALDAO_AVAL_CON_RECLAMO";
+    string internal constant ERROR_AVAL_SIN_CUOTA_PENDIENTE_VENCIDA =
+        "AVALDAO_AVAL_SIN_CUOTA_PENDIENTE_VENCIDA";
 }
