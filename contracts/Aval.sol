@@ -32,6 +32,15 @@ contract Aval is Constants {
         Cerrado
     }
 
+    struct AvalSignable {
+        address aval;
+        string infoCid;
+        address avaldao;
+        address solicitante;
+        address comerciante;
+        address avalado;
+    }
+
     /// @dev Estructura que define los datos de una Cuota.
     struct Cuota {
         uint8 numero; // Número de cuota.
@@ -65,9 +74,21 @@ contract Aval is Constants {
     Status public status; // Estado del aval.
 
     event Received(address, uint256);
-    event AvalCuotaUnlock(address aval, uint8 numeroCuota);
-    event AvalReclamoOpen(address aval, uint8 numeroReclamo);
-    event AvalReclamoClose(address aval, uint8 numeroReclamo);
+    event Signed();
+    event CuotaUnlock(uint8 numeroCuota);
+    event CuotaReintegrada(uint8 numeroCuota);
+    event ReclamoOpen(uint8 numeroReclamo);
+    event ReclamoClose(uint8 numeroReclamo);
+
+    uint8 private constant SIGNER_COUNT = 4;
+    uint8 private constant SIGN_INDEX_SOLICITANTE = 0;
+    uint8 private constant SIGN_INDEX_COMERCIANTE = 1;
+    uint8 private constant SIGN_INDEX_AVALADO = 2;
+    uint8 private constant SIGN_INDEX_AVALDAO = 3;
+    bytes32 constant AVAL_SIGNABLE_TYPEHASH =
+        keccak256(
+            "AvalSignable(address aval,string infoCid,address avaldao,address solicitante,address comerciante,address avalado)"
+        );
 
     /**
      * @notice solo Avaldao Contract tiene acceso.
@@ -90,7 +111,7 @@ contract Aval is Constants {
         string _infoCid,
         address[] _users,
         uint256 _montoFiat
-    ) {
+    ) public {
         avaldaoContract = Avaldao(msg.sender); // Avaldao Contract.
         // Aval
         id = _id;
@@ -125,10 +146,308 @@ contract Aval is Constants {
     }
 
     /**
+     * @notice Firma (múltiple) el aval por todos los participantes: Solicitante, Comerciante, Avalado y Avaldao.
+     * @dev Las firmas se reciben en 3 array distintos, donde cada uno contiene las variables V, R y S de las firmas en Ethereum.
+     * @dev Los elementos de los array corresponden a los firmantes, 0:Solicitante, 1:Comerciante, 2:Avalado y 3:Avaldao.
+     *
+     * @param _signV array con las variables V de las firmas de los participantes.
+     * @param _signR array con las variables R de las firmas de los participantes.
+     * @param _signS array con las variables S de las firmas de los participantes.
+     */
+    function sign(
+        uint8[] _signV,
+        bytes32[] _signR,
+        bytes32[] _signS
+    ) external {
+        // El aval solo puede firmarse por Avaldao.
+        require(avaldao == msg.sender, ERROR_AUTH_FAILED);
+
+        // El aval solo puede firmarse si está completado.
+        require(status == Aval.Status.Completado, ERROR_AVAL_INVALID_STATUS);
+
+        // Verifica que estén las firmas de todos lo firmantes.
+        require(
+            _signV.length == SIGNER_COUNT &&
+                _signR.length == SIGNER_COUNT &&
+                _signS.length == SIGNER_COUNT,
+            ERROR_AVAL_FALTAN_FIRMAS
+        );
+
+        // Note: we need to use `encodePacked` here instead of `encode`.
+        bytes32 hashSigned = keccak256(
+            abi.encodePacked(
+                "\x19\x01",
+                avaldaoContract.DOMAIN_SEPARATOR(),
+                keccak256(
+                    abi.encode(
+                        AVAL_SIGNABLE_TYPEHASH,
+                        address(this),
+                        keccak256(bytes(infoCid)),
+                        avaldao,
+                        solicitante,
+                        comerciante,
+                        avalado
+                    )
+                )
+            )
+        );
+
+        // Verficación de la firma del Solicitante.
+        _verifySign(
+            hashSigned,
+            _signV[SIGN_INDEX_SOLICITANTE],
+            _signR[SIGN_INDEX_SOLICITANTE],
+            _signS[SIGN_INDEX_SOLICITANTE],
+            solicitante
+        );
+
+        // Verficación de la firma del Comerciante.
+        _verifySign(
+            hashSigned,
+            _signV[SIGN_INDEX_COMERCIANTE],
+            _signR[SIGN_INDEX_COMERCIANTE],
+            _signS[SIGN_INDEX_COMERCIANTE],
+            comerciante
+        );
+
+        // Verficación de la firma del Avalado.
+        _verifySign(
+            hashSigned,
+            _signV[SIGN_INDEX_AVALADO],
+            _signR[SIGN_INDEX_AVALADO],
+            _signS[SIGN_INDEX_AVALADO],
+            avalado
+        );
+
+        // Verficación de la firma del Avaldao.
+        _verifySign(
+            hashSigned,
+            _signV[SIGN_INDEX_AVALDAO],
+            _signR[SIGN_INDEX_AVALDAO],
+            _signS[SIGN_INDEX_AVALDAO],
+            avaldao
+        );
+
+        // Bloqueo de fondos.
+        _lockFund();
+
+        // Se realizó la verificación de todas las firmas y se bloquearon los fondos
+        // por lo que el aval pasa a estado Vigente.
+        status = Status.Vigente;
+
+        emit Signed();
+    }
+
+    /**
+     * @notice desbloquea fondos del aval equivalentes a una cuota, preparado para ejecutarse automáticamente cada cierto período.
+     * Los fondos son retornados al fondo de garantía general.
+     * @dev TODO Esta implementación asume que los token tienen el mismo valor que al momento de bloquearse en el aval.
+     */
+    function unlockFundAuto() external {
+        // El sender debe ser Avaldao.
+        require(avaldao == msg.sender, ERROR_AUTH_FAILED);
+
+        _unlockFundCuota(false);
+
+        if (!hasCuotaPendiente()) {
+            // El aval ya no tiene cuotas pendientes, por lo que pasa a estado Finalizado.
+            status = Status.Finalizado;
+        }
+    }
+
+    /**
+     * @notice desbloquea fondos del aval equivalentes a una cuota, preparado para ejecutarse de manera manual por el solicitante.
+     * Los fondos son retornados al fondo de garantía general.
+     * @dev TODO Esta implementación asume que los token tienen el mismo valor que al momento de bloquearse en el aval.
+     */
+    function unlockFundManual() external {
+        // El sender debe ser el Solicitante.
+        require(solicitante == msg.sender, ERROR_AUTH_FAILED);
+
+        _unlockFundCuota(true);
+
+        if (!hasCuotaPendiente()) {
+            // El aval ya no tiene cuotas pendientes, por lo que pasa a estado Finalizado.
+            status = Status.Finalizado;
+        }
+
+        if (
+            status == Status.Finalizado ||
+            (hasReclamoVigente() && !hasCuotaEnMora())
+        ) {
+            // Como el aval está finalizado o
+            // Tiene un reclamo sin cuota en mora, se cierra el reclamo actual.
+            _closeReclamo();
+        }
+    }
+
+    /**
+     * Abre un nuevo reclamo del aval.
+     */
+    function openReclamo() external {
+        // El sender debe ser el Comerciante.
+        require(comerciante == msg.sender, ERROR_AUTH_FAILED);
+        // El aval solo puede reclamarse si está vigente.
+        require(status == Status.Vigente, ERROR_AVAL_INVALID_STATUS);
+        // El aval no debe tener un reclamo vigente para abrir un nuevo reclamo.
+        require(hasReclamoVigente() == false, ERROR_AVAL_CON_RECLAMO);
+        // La fecha actual debe ser mayor a la fecha de vencimiento de la primera cuota Pendiente.
+        bool hasCuotaPendienteVencida = false;
+        for (uint8 i = 0; i < cuotasCantidad; i++) {
+            Cuota storage cuota = cuotas[i];
+            if (
+                cuota.status == CuotaStatus.Pendiente &&
+                cuota.timestampVencimiento <= block.timestamp
+            ) {
+                hasCuotaPendienteVencida = true;
+                break;
+            }
+        }
+        require(
+            hasCuotaPendienteVencida == true,
+            ERROR_AVAL_SIN_CUOTA_PENDIENTE_VENCIDA
+        );
+        // El aval es reclamable, por lo que se crea el reclamo.
+        Reclamo memory reclamo;
+        reclamo.numero = uint8(reclamos.length + 1);
+        reclamo.status = ReclamoStatus.Vigente;
+        reclamos.push(reclamo);
+        emit ReclamoOpen(reclamo.numero);
+    }
+
+    /**
+     * Reintegra los fondos del aval al comerciante.
+     */
+    function reintegrar() external {
+        // El sender debe ser Avaldao.
+        require(avaldao == msg.sender, ERROR_AUTH_FAILED);
+        // El aval solo puede reintegrarse si está vigente.
+        require(status == Status.Vigente, ERROR_AVAL_INVALID_STATUS);
+        // El aval debe tener un reclamo vigente para reintegrar los fondos.
+        require(hasReclamoVigente() == true, ERROR_AVAL_SIN_RECLAMO);
+        // Las cuotas a reintegrar son aquellas en estado pendiente y donde la
+        // fecha actual es mayor o igual a su fecha de vencimiento.
+        for (uint8 i1 = 0; i1 < cuotasCantidad; i1++) {
+            Cuota storage cuota = cuotas[i1];
+            if (
+                cuota.status == CuotaStatus.Pendiente &&
+                cuota.timestampVencimiento <= block.timestamp
+            ) {
+                // Se transfiere el monto de la cuota al comerciante.
+                _transferCuotaMonto(cuota, comerciante);
+                // Se actualiza el estado de la cuota a Reintegrada.
+                cuota.status = CuotaStatus.Reintegrada;
+                emit CuotaReintegrada(cuota.numero);
+            }
+        }
+        // Se cierra el reclamo vigente actual porque se resolvió reintegrando los fondos.
+        _closeReclamo();
+        if (!hasCuotaPendiente()) {
+            // El aval ya no tiene cuotas pendientes, por lo que pasa a estado Finalizado.
+            status = Status.Finalizado;
+        }
+    }
+
+    /**
+     * @dev Fallback Function.
+     */
+    function() external payable {
+        emit Received(msg.sender, msg.value);
+    }
+
+    /**
+     * @notice Obtiene la cuota número `_numero` del Aval.
+     * @param _numero número de cuota requerida.
+     * @return Datos del Aval.
+     */
+    function getCuotaByNumero(uint8 _numero)
+        external
+        view
+        returns (
+            uint8 numero,
+            uint256 montoFiat,
+            uint32 timestampVencimiento,
+            uint32 timestampDesbloqueo,
+            CuotaStatus status
+        )
+    {
+        for (uint8 i = 0; i < cuotas.length; i++) {
+            if (cuotas[i].numero == _numero) {
+                numero = cuotas[i].numero;
+                montoFiat = cuotas[i].montoFiat;
+                timestampVencimiento = cuotas[i].timestampVencimiento;
+                timestampDesbloqueo = cuotas[i].timestampDesbloqueo;
+                status = cuotas[i].status;
+                break;
+            }
+        }
+    }
+
+    /**
+     * @notice Determina si el aval tiene o no una cuota en estado Pendiente.
+     * @return <code>true</code> si tiene una cuota en estado Pendiente.
+     * <code>false</code> si no tiene una cuota en estado Pendiente.
+     */
+    function hasCuotaPendiente() public view returns (bool _hasCuotaPendiente) {
+        for (uint8 i = 0; i < cuotas.length; i++) {
+            if (cuotas[i].status == CuotaStatus.Pendiente) {
+                _hasCuotaPendiente = true;
+                break;
+            }
+        }
+    }
+
+    /**
+     * @notice Determina si el aval tiene o no una cuota en mora.
+     * @return <code>true</code> si tiene una cuota en mora.
+     * <code>false</code> si no tiene una cuota en mora.
+     */
+    function hasCuotaEnMora() public view returns (bool _hasCuotaEnMora) {
+        for (uint8 i = 0; i < cuotas.length; i++) {
+            if (
+                cuotas[i].status == CuotaStatus.Pendiente &&
+                cuotas[i].timestampVencimiento < block.timestamp
+            ) {
+                _hasCuotaEnMora = true;
+                break;
+            }
+        }
+    }
+
+    /**
+     * @notice Determina si el aval tiene o no un reclamo en estado Vigente.
+     * @return <code>true</code> si tiene un reclamo en estado Vigente.
+     * <code>false</code> si no tiene un reclamo en estado Vigente.
+     */
+    function hasReclamoVigente() public view returns (bool _hasReclamoVigente) {
+        for (uint8 i = 0; i < reclamos.length; i++) {
+            if (reclamos[i].status == ReclamoStatus.Vigente) {
+                _hasReclamoVigente = true;
+                break;
+            }
+        }
+    }
+
+    // Internal functions
+
+    /**
+     * @notice Cierra el reclamo vigente actual si lo hubiera.
+     */
+    function _closeReclamo() internal {
+        for (uint8 i = 0; i < reclamos.length; i++) {
+            if (reclamos[i].status == ReclamoStatus.Vigente) {
+                reclamos[i].status = ReclamoStatus.Cerrado;
+                emit ReclamoClose(reclamos[i].numero);
+                break;
+            }
+        }
+    }
+
+    /**
      * @notice bloquea fondos desde el fondo de garantía en el aval.
      *
      */
-    function lockFund() public onlyByAvaldaoContract {
+    function _lockFund() internal {
         // Debe haber fondos suficientes para garantizar el aval.
         require(
             montoFiat <= avaldaoContract.vault().getTokensBalanceFiat(),
@@ -180,186 +499,6 @@ contract Aval is Constants {
     }
 
     /**
-     * @notice desbloquea fondos del aval equivalentes a una cuota, preparado para ejecutarse automáticamente cada cierto período.
-     * Los fondos son retornados al fondo de garantía general.
-     * @dev TODO Esta implementación asume que los token tienen el mismo valor que al momento de bloquearse en el aval.
-     */
-    function unlockFundAuto() external {
-        // El sender debe ser Avaldao.
-        require(avaldao == msg.sender, ERROR_AUTH_FAILED);
-
-        _unlockFundCuota(false);
-
-        if (!hasCuotaPendiente()) {
-            // El aval ya no tiene cuotas pendientes, por lo que pasa a estado Finalizado.
-            status = Status.Finalizado;
-        }
-    }
-
-    /**
-     * @notice desbloquea fondos del aval equivalentes a una cuota, preparado para ejecutarse de manera manual por el solicitante.
-     * Los fondos son retornados al fondo de garantía general.
-     * @dev TODO Esta implementación asume que los token tienen el mismo valor que al momento de bloquearse en el aval.
-     */
-    function unlockFundManual() external {
-        // El sender debe ser el Solicitante.
-        require(solicitante == msg.sender, ERROR_AUTH_FAILED);
-
-        _unlockFundCuota(true);
-
-        if (!hasCuotaPendiente()) {
-            // El aval ya no tiene cuotas pendientes, por lo que pasa a estado Finalizado.
-            status = Status.Finalizado;
-        }
-
-        if (
-            status == Status.Finalizado ||
-            (hasReclamoVigente() && !hasCuotaEnMora())
-        ) {
-            // Como el aval está finalizado o
-            // Tiene un reclamo sin cuota en mora, se cierra el reclamo actual.
-            closeReclamo();
-        }
-    }
-
-    /**
-     * @notice Actualiza el estado del aval.
-     * @param _status nuevo estado del aval.
-     */
-    function updateStatus(Status _status) public onlyByAvaldaoContract {
-        status = _status;
-    }
-
-    /**
-     * Abre un nuevo reclamo del aval.
-     */
-    function openReclamo() external {
-        // El sender debe ser el Comerciante.
-        require(comerciante == msg.sender, ERROR_AUTH_FAILED);
-        // El aval solo puede reclamarse si está vigente.
-        require(status == Status.Vigente, ERROR_AVAL_INVALID_STATUS);
-        // El aval no debe tener un reclamo vigente para abrir un nuevo reclamo.
-        require(hasReclamoVigente() == false, ERROR_AVAL_CON_RECLAMO);
-        // La fecha actual debe ser mayor a la fecha de vencimiento de la primera cuota Pendiente.
-        bool hasCuotaPendienteVencida = false;
-        for (uint8 i = 0; i < cuotasCantidad; i++) {
-            Cuota storage cuota = cuotas[i];
-            if (
-                cuota.status == CuotaStatus.Pendiente &&
-                cuota.timestampVencimiento <= block.timestamp
-            ) {
-                hasCuotaPendienteVencida = true;
-                break;
-            }
-        }
-        require(
-            hasCuotaPendienteVencida == true,
-            ERROR_AVAL_SIN_CUOTA_PENDIENTE_VENCIDA
-        );
-        // El aval es reclamable, por lo que se crea el reclamo.
-        Reclamo memory reclamo;
-        reclamo.numero = uint8(reclamos.length + 1);
-        reclamo.status = ReclamoStatus.Vigente;
-        reclamos.push(reclamo);
-        emit AvalReclamoOpen(address(this), reclamo.numero);
-    }
-
-    /**
-     * @notice Cierra el reclamo actual si lo hubiera.
-     */
-    function closeReclamo() public onlyByAvaldaoContract {
-        for (uint8 i = 0; i < reclamos.length; i++) {
-            if (reclamos[i].status == ReclamoStatus.Vigente) {
-                reclamos[i].status = ReclamoStatus.Cerrado;
-                emit AvalReclamoClose(address(this), reclamos[i].numero);
-                break;
-            }
-        }
-    }
-
-    /**
-     * @dev Fallback Function.
-     */
-    function() external payable {
-        emit Received(msg.sender, msg.value);
-    }
-
-    /**
-     * @notice Obtiene la cuota número `_numero` del Aval.
-     * @param _numero número de cuota requerida.
-     * @return Datos del Aval.
-     */
-    function getCuotaByNumero(uint8 _numero)
-        external
-        view
-        returns (
-            uint8 numero,
-            uint256 montoFiat,
-            uint32 timestampVencimiento,
-            uint32 timestampDesbloqueo,
-            CuotaStatus status
-        )
-    {
-        for (uint8 i = 0; i < cuotas.length; i++) {
-            if (cuotas[i].numero == _numero) {
-                numero = cuotas[i].numero;
-                montoFiat = cuotas[i].montoFiat;
-                timestampVencimiento = cuotas[i].timestampVencimiento;
-                timestampDesbloqueo = cuotas[i].timestampDesbloqueo;
-                status = cuotas[i].status;
-                break;
-            }
-        }
-    }
-
-    /**
-     * @notice Determina si el aval tiene o no una cuota en estado Pendiente.
-     * @return <code>true</code> si tiene una cuota en estado Pendiente.
-     * <code>false</code> si no tiene una cuota en estado Pendiente.
-     */
-    function hasCuotaPendiente() public view returns (bool hasCuotaPendiente) {
-        for (uint8 i = 0; i < cuotas.length; i++) {
-            if (cuotas[i].status == CuotaStatus.Pendiente) {
-                hasCuotaPendiente = true;
-                break;
-            }
-        }
-    }
-
-    /**
-     * @notice Determina si el aval tiene o no una cuota en mora.
-     * @return <code>true</code> si tiene una cuota en mora.
-     * <code>false</code> si no tiene una cuota en mora.
-     */
-    function hasCuotaEnMora() public view returns (bool hasCuotaEnMora) {
-        for (uint8 i = 0; i < cuotas.length; i++) {
-            if (
-                cuotas[i].status == CuotaStatus.Pendiente &&
-                cuotas[i].timestampVencimiento < block.timestamp
-            ) {
-                hasCuotaEnMora = true;
-                break;
-            }
-        }
-    }
-
-    /**
-     * @notice Determina si el aval tiene o no un reclamo en estado Vigente.
-     * @return <code>true</code> si tiene un reclamo en estado Vigente.
-     * <code>false</code> si no tiene un reclamo en estado Vigente.
-     */
-    function hasReclamoVigente() public view returns (bool hasReclamoVigente) {
-        for (uint8 i = 0; i < reclamos.length; i++) {
-            if (reclamos[i].status == ReclamoStatus.Vigente) {
-                hasReclamoVigente = true;
-                break;
-            }
-        }
-    }
-
-    // Internal functions
-
-    /**
      * @notice Desbloquea fondos del aval en `_tokens` equivalentes a una cuota y los retorna al Fondo de Garantía general.
      * @dev TODO Esta implementación asume que los token tienen el mismo valor que al momento de bloquearse en el aval.
      * @param _force fuerza el desbloqueo de fondos aunque no se cumpla la fecha de desbloqueo o existan reclamos vigentes.
@@ -373,7 +512,6 @@ contract Aval is Constants {
             require(hasReclamoVigente() == false, ERROR_AVAL_CON_RECLAMO);
         }
 
-        address[] memory tokens = avaldaoContract.vault().getTokens();
         for (uint8 i1 = 0; i1 < cuotasCantidad; i1++) {
             Cuota storage cuota = cuotas[i1];
 
@@ -384,76 +522,83 @@ contract Aval is Constants {
                 cuota.status == CuotaStatus.Pendiente &&
                 (_force || cuota.timestampDesbloqueo <= block.timestamp)
             ) {
-                uint256 montoFiatUnlock = 0;
-                for (uint8 i2 = 0; i2 < tokens.length; i2++) {
-                    if (montoFiatUnlock >= cuota.montoFiat) {
-                        // Se alcanzó el monto desbloqueado para la cuota.
-                        break;
-                    }
-                    address token = tokens[i2];
-                    uint256 tokenRate = avaldaoContract
-                        .vault()
-                        .exchangeRateProvider()
-                        .getExchangeRate(token);
-                    uint256 tokenBalance = _getContractFundByToken(
-                        address(this),
-                        token
-                    );
-                    uint256 tokenBalanceFiat = tokenBalance.div(tokenRate);
-                    uint256 tokenBalanceToTransfer;
-
-                    if (
-                        montoFiatUnlock.add(tokenBalanceFiat) < cuota.montoFiat
-                    ) {
-                        // Con el balance se alcanza una parte del fondo a desbloquear.
-                        // Se transfiere todo el balance.
-                        tokenBalanceToTransfer = tokenBalance;
-                        montoFiatUnlock = montoFiatUnlock.add(tokenBalanceFiat);
-                    } else {
-                        // Con el balance del token se alcanza el fondo a desbloquear.
-                        // Se obtiene la diferencia entre el monto objetivo
-                        // y el monto desbloqueado hasta el momento.
-                        uint256 montoFiatDiff = cuota.montoFiat.sub(
-                            montoFiatUnlock
-                        );
-                        // Se transfiere solo el balance necesario para llegar al objetivo.
-                        tokenBalanceToTransfer = montoFiatDiff.mul(tokenRate);
-                        // Se alcanzó el monto objetivo.
-                        montoFiatUnlock = montoFiatUnlock.add(montoFiatDiff);
-                    }
-
-                    if (tokenBalanceToTransfer > 0) {
-                        // Se transfiere el balance desbloqueado desde el Aval hacia el fondo de garantía general.
-                        if (token == ETH) {
-                            // https://docs.soliditylang.org/en/v0.8.9/control-structures.html?highlight=value%20function#external-function-calls
-                            // avaldaoContract.vault().deposit{value: _monto}(_token, _monto);
-                            // Sintaxis no válida. Se sigue utilizando sintaxis deprecada.
-                            avaldaoContract.vault().deposit.value(
-                                tokenBalanceToTransfer
-                            )(token, tokenBalanceToTransfer);
-                        } else {
-                            // Se aprueba previamente al Vault para que transfiera los tokens del aval.
-                            require(
-                                ERC20(token).safeApprove(
-                                    avaldaoContract.vault(),
-                                    tokenBalanceToTransfer
-                                ),
-                                ERROR_TOKEN_APPROVE_FAILED
-                            );
-                            avaldaoContract.vault().deposit(
-                                token,
-                                tokenBalanceToTransfer
-                            );
-                        }
-                    }
-                }
-
+                // Se transfiere el monto de la cuota al Fondo de Garantía.
+                _transferCuotaMonto(cuota, avaldaoContract.vault());
                 // Se actualiza el estado de la cuota a Pagada.
                 // Como se desbloquean los fondos, se asume que la cuota ha sido pagada.
                 cuota.status = CuotaStatus.Pagada;
-
-                emit AvalCuotaUnlock(address(this), cuota.numero);
+                emit CuotaUnlock(cuota.numero);
                 break;
+            }
+        }
+    }
+
+    /**
+     * @notice Trasfiere el monto de la `_cuota` al destinatario `_to`.
+     * @param _cuota cuota sobre la cual se transfiere el equivalente de su monto.
+     * @param _to destinatario de la transferencia.
+     */
+    function _transferCuotaMonto(Cuota _cuota, address _to) internal {
+        address[] memory tokens = avaldaoContract.vault().getTokens();
+        uint256 montoFiatToTransfer = 0;
+        for (uint8 i = 0; i < tokens.length; i++) {
+            if (montoFiatToTransfer >= _cuota.montoFiat) {
+                // Se alcanzó el monto a reintegar de la cuota.
+                break;
+            }
+            address token = tokens[i];
+            uint256 tokenRate = avaldaoContract
+                .vault()
+                .exchangeRateProvider()
+                .getExchangeRate(token);
+            uint256 tokenBalance = _getContractFundByToken(
+                address(this),
+                token
+            );
+            uint256 tokenBalanceFiat = tokenBalance.div(tokenRate);
+            uint256 tokenBalanceToTransfer;
+
+            if (montoFiatToTransfer.add(tokenBalanceFiat) < _cuota.montoFiat) {
+                // Con el balance se alcanza una parte del fondo a trasferir.
+                // Se transfiere todo el balance.
+                tokenBalanceToTransfer = tokenBalance;
+                montoFiatToTransfer = montoFiatToTransfer.add(tokenBalanceFiat);
+            } else {
+                // Con el balance del token se alcanza el fondo a trasferir.
+                // Se obtiene la diferencia entre el monto objetivo
+                // y el monto a trasnferir hasta el momento.
+                uint256 montoFiatDiff = _cuota.montoFiat.sub(
+                    montoFiatToTransfer
+                );
+                // Se transfiere solo el balance necesario para llegar al objetivo.
+                tokenBalanceToTransfer = montoFiatDiff.mul(tokenRate);
+                // Se alcanzó el monto objetivo.
+                montoFiatToTransfer = montoFiatToTransfer.add(montoFiatDiff);
+            }
+
+            if (tokenBalanceToTransfer > 0) {
+                if (token == ETH) {
+                    // Transferencia de ETH
+                    _to.transfer(tokenBalanceToTransfer);
+                } else {
+                    // Transferencia de Token ERC20
+                    if (_to == address(avaldaoContract.vault())) {
+                        // El destino es el Fondo de Garantía.
+                        require(
+                            ERC20(token).safeApprove(
+                                _to,
+                                tokenBalanceToTransfer
+                            ),
+                            ERROR_TOKEN_APPROVE_FAILED
+                        );
+                        avaldaoContract.vault().deposit(
+                            token,
+                            tokenBalanceToTransfer
+                        );
+                    } else {
+                        ERC20(token).transfer(_to, tokenBalanceToTransfer);
+                    }
+                }
             }
         }
     }
@@ -473,5 +618,32 @@ contract Aval is Constants {
         } else {
             return ERC20(_token).staticBalanceOf(_contractAddress);
         }
+    }
+
+    /**
+     * Verifica que el signer haya firmado el hash. La firma se especifica por las variables V, R y S.
+     *
+     * @param _hashSigned hash firmado.
+     * @param _signV variable V de las firma del firmante.
+     * @param _signR variable R de las firma del firmante.
+     * @param _signS variable S de las firma del firmante.
+     * @param  _signer firmando a comprobar si realizó la firma.
+     */
+    function _verifySign(
+        bytes32 _hashSigned,
+        uint8 _signV,
+        bytes32 _signR,
+        bytes32 _signS,
+        address _signer
+    ) internal pure {
+        // Obtiene la dirección pública de la cuenta con la cual se realizó la firma.
+        address signerRecovered = ecrecover(
+            _hashSigned,
+            _signV,
+            _signR,
+            _signS
+        );
+        // La firma recuperada debe ser igual al firmante especificado.
+        require(signerRecovered == _signer, ERROR_AVAL_INVALID_SIGN);
     }
 }

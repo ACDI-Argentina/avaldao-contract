@@ -6,7 +6,6 @@ import "@aragon/os/contracts/lib/math/SafeMath.sol";
 import "./Constants.sol";
 import "./Aval.sol";
 import "./FondoGarantiaVault.sol";
-import "./ExchangeRateProvider.sol";
 
 /**
  * @title Avaldao
@@ -22,28 +21,11 @@ contract Avaldao is AragonApp, Constants {
         uint256 chainId;
         address verifyingContract;
     }
-    struct AvalSignable {
-        address aval;
-        string infoCid;
-        address avaldao;
-        address solicitante;
-        address comerciante;
-        address avalado;
-    }
 
-    uint8 private constant SIGNER_COUNT = 4;
-    uint8 private constant SIGN_INDEX_SOLICITANTE = 0;
-    uint8 private constant SIGN_INDEX_COMERCIANTE = 1;
-    uint8 private constant SIGN_INDEX_AVALADO = 2;
-    uint8 private constant SIGN_INDEX_AVALDAO = 3;
-    bytes32 private DOMAIN_SEPARATOR;
+    bytes32 public DOMAIN_SEPARATOR;
     bytes32 constant EIP712DOMAIN_TYPEHASH =
         keccak256(
             "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
-        );
-    bytes32 constant AVAL_SIGNABLE_TYPEHASH =
-        keccak256(
-            "AvalSignable(address aval,string infoCid,address avaldao,address solicitante,address comerciante,address avalado)"
         );
 
     /**
@@ -55,7 +37,6 @@ contract Avaldao is AragonApp, Constants {
     FondoGarantiaVault public vault;
 
     event SaveAval(string id);
-    event SignAval(string id);
 
     /**
      * @notice solo un Aval registrado tiene acceso.
@@ -153,105 +134,6 @@ contract Avaldao is AragonApp, Constants {
     }
 
     /**
-     * @notice Firma (múltiple) el aval por todos los participantes: Solicitante, Comerciante, Avalado y Avaldao.
-     * @dev Las firmas se reciben en 3 array distintos, donde cada uno contiene las variables V, R y S de las firmas en Ethereum.
-     * @dev Los elementos de los array corresponden a los firmantes, 0:Solicitante, 1:Comerciante, 2:Avalado y 3:Avaldao.
-     *
-     * TODO Cambiar la interface, recibiendo el address en lugar del ID del Aval.
-     * @param _aval aval a firmar.
-     * @param _signV array con las variables V de las firmas de los participantes.
-     * @param _signR array con las variables R de las firmas de los participantes.
-     * @param _signS array con las variables S de las firmas de los participantes.
-     */
-    function signAval(
-        Aval _aval,
-        uint8[] _signV,
-        bytes32[] _signR,
-        bytes32[] _signS
-    ) external {
-        // El aval solo puede firmarse por Avaldao.
-        require(_aval.avaldao() == msg.sender, ERROR_AUTH_FAILED);
-
-        // El aval solo puede firmarse si está completado.
-        require(
-            _aval.status() == Aval.Status.Completado,
-            ERROR_AVAL_INVALID_STATUS
-        );
-
-        // Verifica que estén las firmas de todos lo firmantes.
-        require(
-            _signV.length == SIGNER_COUNT &&
-                _signR.length == SIGNER_COUNT &&
-                _signS.length == SIGNER_COUNT,
-            ERROR_AVAL_FALTAN_FIRMAS
-        );
-
-        // Note: we need to use `encodePacked` here instead of `encode`.
-        bytes32 hashSigned = keccak256(
-            abi.encodePacked(
-                "\x19\x01",
-                DOMAIN_SEPARATOR,
-                keccak256(
-                    abi.encode(
-                        AVAL_SIGNABLE_TYPEHASH,
-                        address(_aval),
-                        keccak256(bytes(_aval.infoCid())),
-                        _aval.avaldao(),
-                        _aval.solicitante(),
-                        _aval.comerciante(),
-                        _aval.avalado()
-                    )
-                )
-            )
-        );
-
-        // Verficación de la firma del Solicitante.
-        _verifySign(
-            hashSigned,
-            _signV[SIGN_INDEX_SOLICITANTE],
-            _signR[SIGN_INDEX_SOLICITANTE],
-            _signS[SIGN_INDEX_SOLICITANTE],
-            _aval.solicitante()
-        );
-
-        // Verficación de la firma del Comerciante.
-        _verifySign(
-            hashSigned,
-            _signV[SIGN_INDEX_COMERCIANTE],
-            _signR[SIGN_INDEX_COMERCIANTE],
-            _signS[SIGN_INDEX_COMERCIANTE],
-            _aval.comerciante()
-        );
-
-        // Verficación de la firma del Avalado.
-        _verifySign(
-            hashSigned,
-            _signV[SIGN_INDEX_AVALADO],
-            _signR[SIGN_INDEX_AVALADO],
-            _signS[SIGN_INDEX_AVALADO],
-            _aval.avalado()
-        );
-
-        // Verficación de la firma del Avaldao.
-        _verifySign(
-            hashSigned,
-            _signV[SIGN_INDEX_AVALDAO],
-            _signR[SIGN_INDEX_AVALDAO],
-            _signS[SIGN_INDEX_AVALDAO],
-            _aval.avaldao()
-        );
-
-        // Bloqueo de fondos.
-        _aval.lockFund();
-
-        // Se realizó la verificación de todas las firmas y se bloquearon los fondos
-        // por lo que el aval pasa a estado Vigente.
-        _aval.updateStatus(Aval.Status.Vigente);
-
-        emit SignAval(_aval.id());
-    }
-
-    /**
      * @notice transfiere `_amount` `_token` al `_aval` desde el fondo de garantía.
      * @param _token token a transferir.
      * @param _amount cantidad del token a transferir.
@@ -296,31 +178,4 @@ contract Avaldao is AragonApp, Constants {
     }
 
     // Internal functions
-
-    /**
-     * Verifica que el signer haya firmado el hash. La firma se especifica por las variables V, R y S.
-     *
-     * @param _hashSigned hash firmado.
-     * @param _signV variable V de las firma del firmante.
-     * @param _signR variable R de las firma del firmante.
-     * @param _signS variable S de las firma del firmante.
-     * @param  _signer firmando a comprobar si realizó la firma.
-     */
-    function _verifySign(
-        bytes32 _hashSigned,
-        uint8 _signV,
-        bytes32 _signR,
-        bytes32 _signS,
-        address _signer
-    ) internal pure {
-        // Obtiene la dirección pública de la cuenta con la cual se realizó la firma.
-        address signerRecovered = ecrecover(
-            _hashSigned,
-            _signV,
-            _signR,
-            _signS
-        );
-        // La firma recuperada debe ser igual al firmante especificado.
-        require(signerRecovered == _signer, ERROR_AVAL_INVALID_SIGN);
-    }
 }
