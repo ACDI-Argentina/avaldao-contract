@@ -45,6 +45,7 @@ contract Aval is Constants {
     struct Reclamo {
         uint8 numero; // Número de reclamo.
         ReclamoStatus status; // Estado del reclamo.
+        uint256 timestampCreacion;  // Timestamp con la fecha de creacion
     }
 
     /**
@@ -222,6 +223,10 @@ contract Aval is Constants {
      */
     function updateStatus(Status _status) public onlyByAvaldaoContract {
         status = _status;
+    }
+
+    function getReclamosLength() public view returns (uint reclamosCount){
+        return reclamos.length;
     }
 
     /**
