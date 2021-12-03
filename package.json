@@ -1,6 +1,6 @@
 {
   "name": "@acdi/avaldao-contract",
-  "version": "1.0.0-alpha.3",
+  "version": "1.0.0-alpha.4",
   "description": "Smart contract de Avaldao",
   "main": "index.js",
   "scripts": {
