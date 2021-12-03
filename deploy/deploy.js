@@ -19,11 +19,14 @@ const { createPermission, grantPermission } = require('../scripts/permissions')
 const args = arg({ '--network': String }, process.argv);
 const network = args["--network"] || "rskRegtest";
 
-
-
 function sleep() {
-    // Mainnet
-    //return new Promise(resolve => setTimeout(resolve, 300000));
+    if (network === "rskTestnet") {
+        // 1 minuto
+        return new Promise(resolve => setTimeout(resolve, 60000));
+    } else if (network === "rskMainnet") {
+        // 5 minuto
+        return new Promise(resolve => setTimeout(resolve, 300000));
+    }
     return new Promise(resolve => setTimeout(resolve, 1));
 }
 
@@ -105,15 +108,19 @@ module.exports = async ({ getNamedAccounts, deployments, getChainId }) => {
 
     log(`   - ENABLE_TOKEN_ROLE`);
     await createPermission(acl, deployer, fondoGarantiaVault.address, ENABLE_TOKEN_ROLE, deployer);
+    await sleep();
 
+    log(`   - TRANSFER_ROLE`);
     await createPermission(acl, avaldao.address, fondoGarantiaVault.address, TRANSFER_ROLE, deployer);
     await sleep();
     log(`       - Avaldao: ${avaldao.address}`);
 
     // Inicialización
     await fondoGarantiaVault.initialize();
+    log(` - Fondo de Garantía Vault initialized`);
     await sleep();
     await avaldao.initialize(fondoGarantiaVault.address, "Avaldao", VERSION, CHAIN_ID, avaldao.address);
+    log(` - Avaldao initialized`);
     await sleep();
 
     // ERC20 Token
@@ -135,15 +142,13 @@ module.exports = async ({ getNamedAccounts, deployments, getChainId }) => {
 
     } else if (network === "rskTestnet") {
 
-        // TODO
         rifAddress = '0x19f64674d8a5b4e652319f5e239efd3bc969a1fe';
-        docAddress = '';
+        docAddress = '0xCB46c0ddc60D18eFEB0E586C17Af6ea36452Dae0';
 
     } else if (network === "rskMainnet") {
 
-        // TODO
         rifAddress = '0x2acc95758f8b5f583470ba265eb685a8f45fc9d5';
-        docAddress = '';
+        docAddress = '0xe700691dA7b9851F2F35f8b8182c69c53CcaD9Db';
     }
 
     // Exchange Rate
@@ -206,9 +211,7 @@ module.exports = async ({ getNamedAccounts, deployments, getChainId }) => {
 
     await fondoGarantiaVault.enableToken(rifAddress, { from: deployer });
     log(`   - RifToken`);
-    
+
     await fondoGarantiaVault.enableToken(docAddress, { from: deployer });
     log(`   - DocToken`);
-
-    log(` - Initialized`);
 }
