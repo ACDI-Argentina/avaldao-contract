@@ -54,7 +54,7 @@ contract Aval is Constants {
     struct Reclamo {
         uint8 numero; // Número de reclamo.
         ReclamoStatus status; // Estado del reclamo.
-        uint256 timestampCreacion;  // Timestamp con la fecha de creacion
+        uint256 timestampCreacion; // Timestamp con la fecha de creacion
     }
 
     /**
@@ -311,13 +311,10 @@ contract Aval is Constants {
         // El aval es reclamable, por lo que se crea el reclamo.
         Reclamo memory reclamo;
         reclamo.numero = uint8(reclamos.length + 1);
+        reclamo.timestampCreacion = block.timestamp;
         reclamo.status = ReclamoStatus.Vigente;
         reclamos.push(reclamo);
         emit ReclamoOpen(reclamo.numero);
-    }
-
-    function getReclamosLength() public view returns (uint reclamosCount){
-        return reclamos.length;
     }
 
     /**
@@ -351,13 +348,6 @@ contract Aval is Constants {
             // El aval ya no tiene cuotas pendientes, por lo que pasa a estado Finalizado.
             status = Status.Finalizado;
         }
-    }
-
-    /**
-     * @dev Fallback Function.
-     */
-    function() external payable {
-        emit Received(msg.sender, msg.value);
     }
 
     /**
@@ -431,6 +421,20 @@ contract Aval is Constants {
                 break;
             }
         }
+    }
+
+    /**
+     * @notice Obtiene la cantidad de reclamos del aval.
+     */
+    function getReclamosLength() public view returns (uint256 reclamosCount) {
+        return reclamos.length;
+    }
+
+    /**
+     * @dev Fallback Function.
+     */
+    function() external payable {
+        emit Received(msg.sender, msg.value);
     }
 
     // Internal functions
