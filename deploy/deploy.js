@@ -5,7 +5,6 @@ const ACL = artifacts.require('@aragon/os/build/contracts/acl/ACL')
 
 const Avaldao = artifacts.require('Avaldao')
 const FondoGarantiaVault = artifacts.require('FondoGarantiaVault')
-//const Vault = artifacts.require('Vault')
 const MoCStateMock = artifacts.require('MoCStateMock');
 const RoCStateMock = artifacts.require('RoCStateMock');
 const DocTokenMock = artifacts.require('DocTokenMock');
@@ -63,7 +62,7 @@ module.exports = async ({ getNamedAccounts, deployments, getChainId }) => {
 
     log(`Avaldao deploy`);
 
-    const avaldaoBase = await Avaldao.new({ from: deployer/*, gas: 7062374*/ });
+    const avaldaoBase = await Avaldao.new({ from: deployer/*, gas: 6800000*/ });
     log(` - Avaldao Base: ${avaldaoBase.address}`);
     await sleep();
 
@@ -84,22 +83,16 @@ module.exports = async ({ getNamedAccounts, deployments, getChainId }) => {
 
     // Configuración de grupos y permisos
 
-    log(` - Set groups`);
-
     log(` - Set permissions`);
 
-    let CREATE_AVAL_ROLE = await avaldaoBase.CREATE_AVAL_ROLE();
+    let CREATE_PERMISSIONS_ROLE = await acl.CREATE_PERMISSIONS_ROLE();
     let SET_EXCHANGE_RATE_PROVIDER = await fondoGarantiaVaultBase.SET_EXCHANGE_RATE_PROVIDER();
     let ENABLE_TOKEN_ROLE = await fondoGarantiaVaultBase.ENABLE_TOKEN_ROLE();
     let TRANSFER_ROLE = await fondoGarantiaVaultBase.TRANSFER_ROLE()
 
-    log(`   - CREATE_AVAL_ROLE`);
-    await createPermission(acl, account1, avaldao.address, CREATE_AVAL_ROLE, deployer);
+    log(`   - CREATE_PERMISSIONS_ROLE`);
+    await grantPermission(acl, avaldao.address, acl.address, CREATE_PERMISSIONS_ROLE, deployer);
     await sleep();
-    log(`       - Account1: ${account1}`);
-    await grantPermission(acl, account2, avaldao.address, CREATE_AVAL_ROLE, deployer);
-    await sleep();
-    log(`       - Account2: ${account2}`);
 
     log(`   - SET_EXCHANGE_RATE_PROVIDER`);
     await createPermission(acl, deployer, fondoGarantiaVault.address, SET_EXCHANGE_RATE_PROVIDER, deployer);
@@ -119,7 +112,7 @@ module.exports = async ({ getNamedAccounts, deployments, getChainId }) => {
     await fondoGarantiaVault.initialize();
     log(` - Fondo de Garantía Vault initialized`);
     await sleep();
-    await avaldao.initialize(fondoGarantiaVault.address, "Avaldao", VERSION, CHAIN_ID, avaldao.address);
+    await avaldao.initialize(fondoGarantiaVault.address, "Avaldao", VERSION, CHAIN_ID, avaldao.address, account1);
     log(` - Avaldao initialized`);
     await sleep();
 

@@ -55,7 +55,6 @@ contract('Avaldao App', (accounts) => {
         fondoGarantiaVaultBase = await FondoGarantiaVault.new({ from: deployerAddress });
         // Setup constants
         SET_EXCHANGE_RATE_PROVIDER = await avaldaoBase.SET_EXCHANGE_RATE_PROVIDER();
-        CREATE_AVAL_ROLE = await avaldaoBase.CREATE_AVAL_ROLE();
         ENABLE_TOKEN_ROLE = await avaldaoBase.ENABLE_TOKEN_ROLE();
         RBTC = '0x0000000000000000000000000000000000000000';
         RBTC_PRICE = new BN('58172000000000000000000'); // Precio del RBTC: 58172,00 US$
@@ -78,8 +77,7 @@ contract('Avaldao App', (accounts) => {
         // Configuración de permisos
         await createPermission(acl, deployerAddress, fondoGarantiaVault.address, SET_EXCHANGE_RATE_PROVIDER, deployerAddress);
         await createPermission(acl, deployerAddress, fondoGarantiaVault.address, ENABLE_TOKEN_ROLE, deployerAddress);
-        await createPermission(acl, solicitanteAddress, avaldao.address, CREATE_AVAL_ROLE, deployerAddress);
-
+        
         // Inicialización
         await fondoGarantiaVault.initialize()
         await avaldao.initialize(fondoGarantiaVault.address, "Avaldao", VERSION, CHAIN_ID, avaldaoContractAddress);

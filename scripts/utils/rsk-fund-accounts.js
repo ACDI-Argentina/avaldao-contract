@@ -88,12 +88,12 @@ async function main() {
     value = amount.mul(web3.utils.toBN(10).pow(decimals));
 
     // RIF Token
-    let rifTokenAddress = '0x463F29B11503e198f6EbeC9903b4e5AaEddf6D29';
+    let rifTokenAddress = '0xeFb80DB9E2d943A492Bd988f4c619495cA815643';
     // Get ERC20 Token contract instance
     let rifContract = new web3.eth.Contract(ERC20Json.abi, rifTokenAddress);
 
     // DOC Token
-    let docTokenAddress = '0x987c1f13d417F7E04d852B44badc883E4E9782e1';
+    let docTokenAddress = '0x463F29B11503e198f6EbeC9903b4e5AaEddf6D29';
     // Get ERC20 Token contract instance
     let docContract = new web3.eth.Contract(ERC20Json.abi, docTokenAddress);
 

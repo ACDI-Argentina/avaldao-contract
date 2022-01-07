@@ -19,7 +19,7 @@ module.exports = {
       url: 'http://localhost:4444',
       chainId: 33,
       accounts: 'remote',
-      gas: 6500000,
+      gas: 6800000,
       timeout: 60000
     },
     rskTestnet: {
