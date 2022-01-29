@@ -96,7 +96,7 @@ contract Avaldao is AragonApp, Constants {
     }
 
     /**
-     * @notice Crea un aval. Quien envía la transacción es el solicitante del aval.
+     * @notice Crea un aval. Quien envía la transacción es Avaldao.
      * @param _id identidicador del aval.
      * @param _infoCid Content ID de la información (JSON) del aval. IPFS Cid.
      * @param _users direcciones con los participantes del aval. 0:Solicitante, 1:Comerciante, 2:Avalado y 3:Avaldao.
@@ -109,8 +109,8 @@ contract Avaldao is AragonApp, Constants {
         address[] _users,
         uint256 _montoFiat,
         bytes4[] _timestampCuotas
-    ) external auth(SOLICITANTE_ROLE) {
-        // El sender debe ser el solicitante del aval.
+    ) external auth(AVALDAO_ROLE) {
+        // El sender debe ser Avaldao del aval.
         require(_users[0] == msg.sender, ERROR_AUTH_FAILED);
 
         // Cada cuota se compone por un par de fecha de vencimiento y desbloqueo.

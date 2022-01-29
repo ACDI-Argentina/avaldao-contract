@@ -18,7 +18,6 @@ contract Aval is Constants {
         Solicitado,
         Rechazado,
         Aceptado,
-        Completado,
         Vigente,
         Finalizado
     }
@@ -82,10 +81,10 @@ contract Aval is Constants {
     event ReclamoClose(uint8 numeroReclamo);
 
     uint8 private constant SIGNER_COUNT = 4;
-    uint8 private constant SIGN_INDEX_SOLICITANTE = 0;
-    uint8 private constant SIGN_INDEX_COMERCIANTE = 1;
-    uint8 private constant SIGN_INDEX_AVALADO = 2;
-    uint8 private constant SIGN_INDEX_AVALDAO = 3;
+    uint8 private constant SIGN_INDEX_AVALDAO = 0;
+    uint8 private constant SIGN_INDEX_SOLICITANTE = 1;
+    uint8 private constant SIGN_INDEX_COMERCIANTE = 2;
+    uint8 private constant SIGN_INDEX_AVALADO = 3;
     bytes32 constant AVAL_SIGNABLE_TYPEHASH =
         keccak256(
             "AvalSignable(address aval,string infoCid,address avaldao,address solicitante,address comerciante,address avalado)"
@@ -104,7 +103,7 @@ contract Aval is Constants {
      * @notice Inicializa un nuevo Contrato de Aval.
      * @param _id identidicador del aval.
      * @param _infoCid Content ID de la información (JSON) del aval. IPFS Cid.
-     * @param _users direcciones con los participantes del aval. 0:Solicitante, 1:Comerciante, 2:Avalado y 3:Avaldao.
+     * @param _users direcciones con los participantes del aval. 0:Avaldao, 1:Solicitante, 2:Comerciante, 3:Avalado.
      * @param _montoFiat monto FIAT del avala medido en centavos de USD.
      */
     constructor(
@@ -117,12 +116,12 @@ contract Aval is Constants {
         // Aval
         id = _id;
         infoCid = _infoCid;
-        solicitante = _users[0];
-        comerciante = _users[1];
-        avalado = _users[2];
-        avaldao = _users[3];
+        avaldao = _users[0];
+        solicitante = _users[1];
+        comerciante = _users[2];
+        avalado = _users[3];
         montoFiat = _montoFiat;
-        status = Status.Completado;
+        status = Status.Aceptado;
     }
 
     /**
@@ -149,7 +148,7 @@ contract Aval is Constants {
     /**
      * @notice Firma (múltiple) el aval por todos los participantes: Solicitante, Comerciante, Avalado y Avaldao.
      * @dev Las firmas se reciben en 3 array distintos, donde cada uno contiene las variables V, R y S de las firmas en Ethereum.
-     * @dev Los elementos de los array corresponden a los firmantes, 0:Solicitante, 1:Comerciante, 2:Avalado y 3:Avaldao.
+     * @dev Los elementos de los array corresponden a los firmantes, 0:Avaldao, 1:Solicitante, 2:Comerciante, 3:Avalado.
      *
      * @param _signV array con las variables V de las firmas de los participantes.
      * @param _signR array con las variables R de las firmas de los participantes.
@@ -163,8 +162,8 @@ contract Aval is Constants {
         // El aval solo puede firmarse por Avaldao.
         require(avaldao == msg.sender, ERROR_AUTH_FAILED);
 
-        // El aval solo puede firmarse si está completado.
-        require(status == Aval.Status.Completado, ERROR_AVAL_INVALID_STATUS);
+        // El aval solo puede firmarse si está Aceptado.
+        require(status == Aval.Status.Aceptado, ERROR_AVAL_INVALID_STATUS);
 
         // Verifica que estén las firmas de todos lo firmantes.
         require(
@@ -193,6 +192,15 @@ contract Aval is Constants {
             )
         );
 
+        // Verficación de la firma del Avaldao.
+        _verifySign(
+            hashSigned,
+            _signV[SIGN_INDEX_AVALDAO],
+            _signR[SIGN_INDEX_AVALDAO],
+            _signS[SIGN_INDEX_AVALDAO],
+            avaldao
+        );
+
         // Verficación de la firma del Solicitante.
         _verifySign(
             hashSigned,
@@ -218,15 +226,6 @@ contract Aval is Constants {
             _signR[SIGN_INDEX_AVALADO],
             _signS[SIGN_INDEX_AVALADO],
             avalado
-        );
-
-        // Verficación de la firma del Avaldao.
-        _verifySign(
-            hashSigned,
-            _signV[SIGN_INDEX_AVALDAO],
-            _signR[SIGN_INDEX_AVALDAO],
-            _signS[SIGN_INDEX_AVALDAO],
-            avaldao
         );
 
         // Bloqueo de fondos.
