@@ -239,14 +239,9 @@ contract Aval is Constants {
     }
 
     /**
-     * @notice desbloquea fondos del aval equivalentes a una cuota, preparado para ejecutarse automáticamente cada cierto período.
-     * Los fondos son retornados al fondo de garantía general.
-     * @dev TODO Esta implementación asume que los token tienen el mismo valor que al momento de bloquearse en el aval.
+     * @notice desbloquea fondos del aval equivalentes a una cuota. Los fondos son retornados al fondo de garantía general.
      */
-    function unlockFundAuto() external {
-        // El sender debe ser Avaldao.
-        require(avaldao == msg.sender, ERROR_AUTH_FAILED);
-
+    function unlockFundAuto() public onlyByAvaldaoContract {
         _unlockFundCuota(false);
 
         if (!hasCuotaPendiente()) {

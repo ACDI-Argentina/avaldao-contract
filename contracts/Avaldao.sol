@@ -2,7 +2,6 @@ pragma solidity ^0.4.24;
 pragma experimental ABIEncoderV2;
 
 import "@aragon/os/contracts/apps/AragonApp.sol";
-import "@aragon/os/contracts/acl/ACL.sol";
 import "@aragon/os/contracts/lib/math/SafeMath.sol";
 import "./Constants.sol";
 import "./Aval.sol";
@@ -25,7 +24,6 @@ contract Avaldao is AragonApp, Constants {
 
     string[] private avalesIds;
     Aval[] private avales;
-    address private proxy;
     FondoGarantiaVault public vault;
     bytes32 public DOMAIN_SEPARATOR;
 
@@ -52,19 +50,16 @@ contract Avaldao is AragonApp, Constants {
      * @param _version versión del smart contract.
      * @param _chainId identificador de la red.
      * @param _proxyAddress dirección del smart contract (proxy Aragon).
-     * @param _avaldaoUseraddress dirección del usuario Avaldao principal.
      */
     function initialize(
         FondoGarantiaVault _vault,
         string _name,
         string _version,
         uint256 _chainId,
-        address _proxyAddress,
-        address _avaldaoUseraddress
+        address _proxyAddress
     ) external onlyInit {
         require(isContract(_vault), ERROR_VAULT_NOT_CONTRACT);
         vault = _vault;
-        proxy = _proxyAddress;
         DOMAIN_SEPARATOR = keccak256(
             abi.encode(
                 keccak256(
@@ -73,25 +68,9 @@ contract Avaldao is AragonApp, Constants {
                 keccak256(bytes(_name)),
                 keccak256(bytes(_version)),
                 _chainId,
-                proxy
+                _proxyAddress
             )
         );
-
-        // Configuración del usuario Avaldao.
-        // De esta manera el usuario Avaldao puede asignar roles
-        // e incluso asignar el role AVLADAO_ROLE a otros usuarios.
-        ACL acl = ACL(kernel().acl());
-        if (acl.getPermissionManager(proxy, AVALDAO_ROLE) != proxy) {
-            // El role no ha sido creado por el Permission Manager.
-            // Se crea el permiso y se configura el Permission Manager.
-            acl.createPermission(
-                _avaldaoUseraddress,
-                proxy,
-                AVALDAO_ROLE,
-                proxy
-            );
-        }
-
         initialized();
     }
 
@@ -159,36 +138,12 @@ contract Avaldao is AragonApp, Constants {
     }
 
     /**
-     * @notice establece los permisos sobre el contrato de Avaldao.
-     * @dev https://hack.aragon.org/docs/acl_ACL
-     * @param _address dirección del usuario al cual se establecen los permisos.
-     * @param _rolesToAdd roles a agregar a Avaldao.
-     * @param _rolesToRemove roles a quitar de Avaldao.
+     * @notice desbloquea los fondos de los avales equivalentes a una cuota. Los fondos son retornados al fondo de garantía general.
+     * @dev ejecución au automáticamente cada cierto período.
      */
-    function setUserRoles(
-        address _address,
-        bytes32[] _rolesToAdd,
-        bytes32[] _rolesToRemove
-    ) external auth(AVALDAO_ROLE) {
-        // Se obtiene el Access Control List de la app
-        ACL acl = ACL(kernel().acl());
-        // Permisos a agregar
-        for (uint8 i1 = 0; i1 < _rolesToAdd.length; i1++) {
-            bytes32 role = _rolesToAdd[i1];
-            // Permission Manager: Proxy
-            if (acl.getPermissionManager(proxy, role) != proxy) {
-                // El role no ha sido creado por el Permission Manager.
-                // Se crea el permiso y se configura el Permission Manager.
-                acl.createPermission(_address, proxy, role, proxy);
-            } else {
-                // El role ya ha sido creado y es manejado por el Permission Manager.
-                // Solo se otorga el permiso.
-                acl.grantPermission(_address, proxy, role);
-            }
-        }
-        // Permisos a quitar
-        for (uint8 i2 = 0; i2 < _rolesToRemove.length; i2++) {
-            acl.revokePermission(_address, proxy, _rolesToRemove[i2]);
+    function unlockFunds() external auth(AVALDAO_ROLE) {
+        for (uint256 i = 0; i < avales.length; i++) {
+            Aval(avales[i]).unlockFundAuto();
         }
     }
 

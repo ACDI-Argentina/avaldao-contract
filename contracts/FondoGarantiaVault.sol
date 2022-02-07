@@ -26,7 +26,7 @@ contract FondoGarantiaVault is Vault, Constants {
      */
     function setExchangeRateProvider(ExchangeRateProvider _exchangeRateProvider)
         external
-        auth(SET_EXCHANGE_RATE_PROVIDER)
+        auth(SET_EXCHANGE_RATE_PROVIDER_ROLE)
     {
         exchangeRateProvider = _exchangeRateProvider;
     }

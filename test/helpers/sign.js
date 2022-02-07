@@ -23,7 +23,7 @@ const typedData = {
         name: 'Avaldao',
         version: '1',
         chainId: 1,
-        verifyingContract: '0x05A55E87d40572ea0F9e9D37079FB9cA11bdCc67',
+        verifyingContract: '0x669E348cAd8aBeB10F489bF81c685f3eEA72798F',
         salt: '0xf2d857f4a3edcb9b78b4d503bfe733db1e3f6cdc2b7971ee739626c97e86a558'
     },
     message: {

@@ -1,0 +1,48 @@
+{
+  "contractName": "RoCStateMock",
+  "abi": [
+    {
+      "constant": true,
+      "inputs": [],
+      "name": "getPriceProvider",
+      "outputs": [
+        {
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "constant": true,
+      "inputs": [],
+      "name": "getReserveTokenPrice",
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "name": "price",
+          "type": "uint256"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    }
+  ],
+  "bytecode": "0x608060405234801561001057600080fd5b506040516020806100f0833981016040525160005560bd806100336000396000f300608060405260043610602f5763ffffffff60e060020a6000350416630a065fb681146034578063e0dd2376146062575b600080fd5b348015603f57600080fd5b5060466086565b60408051600160a060020a039092168252519081900360200190f35b348015606d57600080fd5b506074608b565b60408051918252519081900360200190f35b600090565b600054905600a165627a7a723058205436afa5f2137f6c83feb6ad7dbecc8b918e491e22ebcc682e06813602941e170029",
+  "deployedBytecode": "0x608060405260043610602f5763ffffffff60e060020a6000350416630a065fb681146034578063e0dd2376146062575b600080fd5b348015603f57600080fd5b5060466086565b60408051600160a060020a039092168252519081900360200190f35b348015606d57600080fd5b506074608b565b60408051918252519081900360200190f35b600090565b600054905600a165627a7a723058205436afa5f2137f6c83feb6ad7dbecc8b918e491e22ebcc682e06813602941e170029",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}

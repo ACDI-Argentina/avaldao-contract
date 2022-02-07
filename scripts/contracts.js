@@ -1,3 +1,4 @@
+const AdminArtifact = require('../artifacts/Admin.json');
 const AvaldaoArtifact = require('../artifacts/Avaldao.json');
 const AvalArtifact = require('../artifacts/Aval.json');
 const FondoGarantiaVaultArtifact = require('../artifacts/FondoGarantiaVault.json');
@@ -6,6 +7,7 @@ const ExchangeRateProviderArtifact = require('../artifacts/ExchangeRateProvider.
 const ERC20Artifact = require('../artifacts/ERC20.json');
 
 module.exports = {
+  AdminAbi: AdminArtifact.abi,
   AvaldaoAbi: AvaldaoArtifact.abi,
   AvalAbi: AvalArtifact.abi,
   FondoGarantiaVaultAbi: FondoGarantiaVaultArtifact.abi,

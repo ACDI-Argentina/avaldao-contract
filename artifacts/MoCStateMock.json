@@ -1,0 +1,48 @@
+{
+  "contractName": "MoCStateMock",
+  "abi": [
+    {
+      "constant": true,
+      "inputs": [],
+      "name": "getBitcoinPrice",
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "constant": true,
+      "inputs": [],
+      "name": "getBtcPriceProvider",
+      "outputs": [
+        {
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "name": "price",
+          "type": "uint256"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    }
+  ],
+  "bytecode": "0x608060405234801561001057600080fd5b506040516020806100f0833981016040525160005560bd806100336000396000f300608060405260043610602f5763ffffffff60e060020a6000350416638300df4981146034578063d298d9c9146058575b600080fd5b348015603f57600080fd5b5060466086565b60408051918252519081900360200190f35b348015606357600080fd5b50606a608c565b60408051600160a060020a039092168252519081900360200190f35b60005490565b6000905600a165627a7a72305820195fe79b56365eb3c914b3397f6a7b86bf9339345a2535be1abaa61ecc14d1550029",
+  "deployedBytecode": "0x608060405260043610602f5763ffffffff60e060020a6000350416638300df4981146034578063d298d9c9146058575b600080fd5b348015603f57600080fd5b5060466086565b60408051918252519081900360200190f35b348015606357600080fd5b50606a608c565b60408051600160a060020a039092168252519081900360200190f35b60005490565b6000905600a165627a7a72305820195fe79b56365eb3c914b3397f6a7b86bf9339345a2535be1abaa61ecc14d1550029",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}

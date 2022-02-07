@@ -1,85 +1,85 @@
-var Web3 = require('web3');
-var network = "http://localhost:4444";
+require('dotenv').config({ path: `./scripts/utils/.env.${process.env.NODE_ENV}` });
 
+var Web3 = require('web3');
 var FondoGarantiaVaultJson = require('../../artifacts/FondoGarantiaVault.json');
 var ERC20Json = require('../../artifacts/ERC20.json');
 
-// Vault Contract
-var vaultAddress = '0x669E348cAd8aBeB10F489bF81c685f3eEA72798F';
-
-// USUARIOS
-
-// Avaldao
-var avaldaoAddress = '0xee4b388fb98420811C9e04AE8378330C05A2735a';
-// - privateKey: 9b467901129c0ee1366819d8df37fb9c4f87e875b36ff05739831cebdfc5d5e7
-
-// Solicitante
-var solicitanteAddress = '0x0bfA3B6b0E799F2eD34444582187B2cDf2fB11a7';
-// - privateKey: 86c79a03e812f125e29839c03a69c519f24c6e6ce317a5d94f64c558738a03d2
-
-// Comerciante
-var comercianteAddress = '0x36d1d3c43422EF3B1d7d23F20a25977c29BC3f0e';
-// - privateKey: a6c6da072a2561cedb4287bdd4b7cf6ce57bf83dd877c610b9883f3fbb92abdb
-
-// Avalado
-var avaladoAddress = '0x9063541acBD959baeB6Bf64158944b7e5844534a';
-// - privateKey: 75953f08fb622421656e6d345ed618ba8b286f485c420bbca82c6ee611b2a1f7
-
-const RBTC = '0x0000000000000000000000000000000000000000';
-
 async function main() {
 
-    console.log('');
-    console.log('RSK Node Status');
-    console.log(`  Network: ${network}`);
-    console.log('-------------------------------------------');
+    const { NETWORK_NODE_URL,
+        AVALDAO_CONTRACT_ADDRESS,
+        VAULT_CONTRACT_ADDRESS,
+        RIF_TOKEN_ADDRESS,
+        DOC_TOKEN_ADDRESS,
+        AVALDAO_ADDRESS,
+        SOLICITANTE_ADDRESS,
+        COMERCIANTE_ADDRESS,
+        AVALADO_ADDRESS } = process.env;
 
-    var web3 = new Web3(network);
+    // - privateKey: 9b467901129c0ee1366819d8df37fb9c4f87e875b36ff05739831cebdfc5d5e7
+
+    console.log(`${new Date()}`);
+    console.log(`Fondeo de cuentas y contratos`);
+    console.log(`  Network: ${NETWORK_NODE_URL}`);
+    console.log(`  Avaldao Contract: ${AVALDAO_CONTRACT_ADDRESS}`);
+    console.log(`  Vault Contract: ${VAULT_CONTRACT_ADDRESS}`);
+    console.log(`  RIF Token: ${RIF_TOKEN_ADDRESS}`);
+    console.log(`  DOC Token: ${DOC_TOKEN_ADDRESS}`);
+    console.log(`  Usuarios`);
+    console.log(`   - Avaldao: ${AVALDAO_ADDRESS}`);
+    console.log(`   - Solicitante: ${SOLICITANTE_ADDRESS}`);
+    console.log(`   - Comerciante: ${COMERCIANTE_ADDRESS}`);
+    console.log(`   - Avalado: ${AVALADO_ADDRESS}`);
+
+    var web3 = new Web3(NETWORK_NODE_URL);
+
+    var from = process.env.TRANSFER_FROM_ADDRESS;
+    var value = web3.utils.toWei(process.env.TRANSFER_VALUE);
+    const RBTC = '0x0000000000000000000000000000000000000000';
 
     // Ver https://github.com/trufflesuite/truffle/issues/2160
 
-    var from = '0xCD2a3d9F938E13CD947Ec05AbC7FE734Df8DD826';
-    var value = web3.utils.toWei('1');
+    console.log(`  Transferencias`);
 
     // Vault
-    var vault = new web3.eth.Contract(FondoGarantiaVaultJson.abi, vaultAddress);
+    var vault = new web3.eth.Contract(FondoGarantiaVaultJson.abi, VAULT_CONTRACT_ADDRESS);
     await vault.methods.deposit(RBTC, value).send({
         value: value,
         from: from
     });
-    console.log('  - Transferencia de RBTC al Fondo de Garantía.');
+    console.log('   - Transferencia de RBTC al Fondo de Garantía.');
 
     // Avaldao
     await web3.eth.sendTransaction({
         from: from,
-        to: avaldaoAddress,
+        to: AVALDAO_ADDRESS,
         value: value
     });
-    console.log('  - Transferencia de RBTC a Avaldao.');
+    console.log('   - Transferencia de RBTC a Avaldao.');
 
     // Solicitante
     await web3.eth.sendTransaction({
         from: from,
-        to: solicitanteAddress,
+        to: SOLICITANTE_ADDRESS,
         value: value
     });
-    console.log('  - Transferencia de RBTC a Solicitante.');
+    console.log('   - Transferencia de RBTC a Solicitante.');
 
     // Comerciante
     await web3.eth.sendTransaction({
         from: from,
-        to: comercianteAddress,
+        to: COMERCIANTE_ADDRESS,
         value: value
     });
-    console.log('  - Transferencia de RBTC a Comerciante.');
+    console.log('   - Transferencia de RBTC a Comerciante.');
 
     // Avalado
     await web3.eth.sendTransaction({
         from: from,
-        to: avaladoAddress,
+        to: AVALADO_ADDRESS,
         value: value
     });
-    console.log('  - Transferencia de RBTC a Avalado.');
+    console.log('   - Transferencia de RBTC a Avalado.');
 
     // Use BigNumber
     let decimals = web3.utils.toBN(18);
@@ -88,48 +88,46 @@ async function main() {
     value = amount.mul(web3.utils.toBN(10).pow(decimals));
 
     // RIF Token
-    let rifTokenAddress = '0xeFb80DB9E2d943A492Bd988f4c619495cA815643';
     // Get ERC20 Token contract instance
-    let rifContract = new web3.eth.Contract(ERC20Json.abi, rifTokenAddress);
+    let rifContract = new web3.eth.Contract(ERC20Json.abi, RIF_TOKEN_ADDRESS);
 
     // DOC Token
-    let docTokenAddress = '0x463F29B11503e198f6EbeC9903b4e5AaEddf6D29';
     // Get ERC20 Token contract instance
-    let docContract = new web3.eth.Contract(ERC20Json.abi, docTokenAddress);
+    let docContract = new web3.eth.Contract(ERC20Json.abi, DOC_TOKEN_ADDRESS);
 
     // Vault
-    await rifContract.methods.approve(vaultAddress, value).send({ from: from });
-    await vault.methods.deposit(rifTokenAddress, value).send({
+    await rifContract.methods.approve(VAULT_CONTRACT_ADDRESS, value).send({ from: from });
+    await vault.methods.deposit(RIF_TOKEN_ADDRESS, value).send({
         from: from
     });
-    console.log('  - Transferencia de RIF al Fondo de Garantía.');
-    await docContract.methods.approve(vaultAddress, value).send({ from: from });
-    await vault.methods.deposit(docTokenAddress, value).send({
+    console.log('   - Transferencia de RIF al Fondo de Garantía.');
+    await docContract.methods.approve(VAULT_CONTRACT_ADDRESS, value).send({ from: from });
+    await vault.methods.deposit(DOC_TOKEN_ADDRESS, value).send({
         from: from
     });
-    console.log('  - Transferencia de DOC al Fondo de Garantía.');
+    console.log('   - Transferencia de DOC al Fondo de Garantía.');
 
     // Avaldao
-    await rifContract.methods.transfer(avaldaoAddress, value).send({ from: from });
-    console.log('  - Transferencia de RIF a Avaldao.');
-    await docContract.methods.transfer(avaldaoAddress, value).send({ from: from });
-    console.log('  - Transferencia de DOC a Avaldao.');
+    await rifContract.methods.transfer(AVALDAO_ADDRESS, value).send({ from: from });
+    console.log('   - Transferencia de RIF a Avaldao.');
+    await docContract.methods.transfer(AVALDAO_ADDRESS, value).send({ from: from });
+    console.log('   - Transferencia de DOC a Avaldao.');
 
     // Solicitante
-    await rifContract.methods.transfer(solicitanteAddress, value).send({ from: from });
-    console.log('  - Transferencia de RIF a Solicitante.');
-    await docContract.methods.transfer(solicitanteAddress, value).send({ from: from });
-    console.log('  - Transferencia de DOC a Solicitante.');
+    await rifContract.methods.transfer(SOLICITANTE_ADDRESS, value).send({ from: from });
+    console.log('   - Transferencia de RIF a Solicitante.');
+    await docContract.methods.transfer(SOLICITANTE_ADDRESS, value).send({ from: from });
+    console.log('   - Transferencia de DOC a Solicitante.');
     // Comerciante
-    await rifContract.methods.transfer(comercianteAddress, value).send({ from: from });
-    console.log('  - Transferencia de RIF a Comerciante.');
-    await docContract.methods.transfer(comercianteAddress, value).send({ from: from });
-    console.log('  - Transferencia de DOC a Comerciante.');
+    await rifContract.methods.transfer(COMERCIANTE_ADDRESS, value).send({ from: from });
+    console.log('   - Transferencia de RIF a Comerciante.');
+    await docContract.methods.transfer(COMERCIANTE_ADDRESS, value).send({ from: from });
+    console.log('   - Transferencia de DOC a Comerciante.');
     // Avalado
-    await rifContract.methods.transfer(avaladoAddress, value).send({ from: from });
-    console.log('  - Transferencia de RIF a Avalado.');
-    await docContract.methods.transfer(avaladoAddress, value).send({ from: from });
-    console.log('  - Transferencia de DOC a Avaldao.');
+    await rifContract.methods.transfer(AVALADO_ADDRESS, value).send({ from: from });
+    console.log('   - Transferencia de RIF a Avalado.');
+    await docContract.methods.transfer(AVALADO_ADDRESS, value).send({ from: from });
+    console.log('   - Transferencia de DOC a Avaldao.');
 }
 
 // We recommend this pattern to be able to use async/await everywhere
