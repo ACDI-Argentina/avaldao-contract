@@ -96,10 +96,10 @@ contract Avaldao is AragonApp, Constants {
         uint8 cuotasCantidad = uint8(_timestampCuotas.length.div(2));
 
         // El monto debe ser múltiplo de la cantidad de cuotas.
-        require(
+        /*require(
             _montoFiat.mod(cuotasCantidad) == 0,
             ERROR_AVAL_CUOTAS_INVALIDAS
-        );
+        );*/
 
         // Si no se realiza este copiado, el smart contract no compila con el siguiente error:
         // UnimplementedFeatureError: Only byte arrays can be encoded from calldata currently.

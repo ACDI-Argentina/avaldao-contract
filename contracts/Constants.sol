@@ -8,7 +8,6 @@ import "@aragon/os/contracts/common/EtherTokenConstant.sol";
  * @author ACDI
  */
 contract Constants is RoleConstants, EtherTokenConstant {
-
     // Errores
 
     string internal constant ERROR_AUTH_FAILED = "AVALDAO_AUTH_FAILED";
@@ -24,8 +23,8 @@ contract Constants is RoleConstants, EtherTokenConstant {
         "AVALDAO_AVAL_FONDOS_INSUFICIENTES";
     string internal constant ERROR_AVAL_FALTAN_FIRMAS =
         "AVALDAO_AVAL_FALTAN_FIRMAS";
-    string internal constant ERROR_AVAL_CUOTAS_INVALIDAS =
-        "AVALDAO_AVAL_CUOTAS_INVALIDAS";
+    /*string internal constant ERROR_AVAL_CUOTAS_INVALIDAS =
+        "AVALDAO_AVAL_CUOTAS_INVALIDAS";*/
     string internal constant ERROR_AVAL_CON_RECLAMO =
         "AVALDAO_AVAL_CON_RECLAMO";
     string internal constant ERROR_AVAL_SIN_RECLAMO =
