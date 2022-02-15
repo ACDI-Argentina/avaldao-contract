@@ -1,6 +1,6 @@
 {
   "name": "@acdi/avaldao-contract",
-  "version": "1.0.0-alpha.7",
+  "version": "1.0.0-alpha.8",
   "description": "Smart contract de Avaldao",
   "main": "index.js",
   "scripts": {
@@ -13,7 +13,9 @@
     "rsk-regtest:found-accounts": "NODE_ENV=regtest node scripts/utils/rsk-fund-accounts.js",
     "rsk-regtest:desbloquear-fondos": "NODE_ENV=regtest node scripts/utils/avaldao-desbloqueo-automatico.js",
     "rsk-testnet:deploy": "buidler deploy --network rskTestnet",
+    "rsk-testnet:desbloquear-fondos": "NODE_ENV=testnet node scripts/utils/avaldao-desbloqueo-automatico.js",
     "rsk-mainnet:deploy": "buidler deploy --network rskMainnet",
+    "rsk-mainnet:desbloquear-fondos": "NODE_ENV=mainnet node scripts/utils/avaldao-desbloqueo-automatico.js",
     "publish:major": "buidler publish major",
     "publish:minor": "buidler publish minor",
     "publish:patch": "buidler publish patch"
