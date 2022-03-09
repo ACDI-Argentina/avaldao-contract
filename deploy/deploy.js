@@ -100,7 +100,6 @@ module.exports = async ({ getNamedAccounts, deployments, getChainId }) => {
     log(`Set permissions`);
 
     let CREATE_PERMISSIONS_ROLE = await acl.CREATE_PERMISSIONS_ROLE();
-    let ADMIN_ROLE = await adminBase.ADMIN_ROLE();
     let SET_EXCHANGE_RATE_PROVIDER_ROLE = await fondoGarantiaVaultBase.SET_EXCHANGE_RATE_PROVIDER_ROLE();
     let ENABLE_TOKEN_ROLE = await fondoGarantiaVaultBase.ENABLE_TOKEN_ROLE();
     let TRANSFER_ROLE = await fondoGarantiaVaultBase.TRANSFER_ROLE()
@@ -108,11 +107,6 @@ module.exports = async ({ getNamedAccounts, deployments, getChainId }) => {
     log(` - CREATE_PERMISSIONS_ROLE`);
     await grantPermission(acl, admin.address, acl.address, CREATE_PERMISSIONS_ROLE, deployer);
     await sleep();
-
-    /*log(` - ADMIN_ROLE`);
-    await createPermission(acl, account1, admin.address, ADMIN_ROLE, deployer);
-    log(`     - Account 1: ${account1}`);
-    await sleep();*/
 
     log(` - SET_EXCHANGE_RATE_PROVIDER_ROLE`);
     await createPermission(acl, deployer, fondoGarantiaVault.address, SET_EXCHANGE_RATE_PROVIDER_ROLE, deployer);
@@ -127,6 +121,8 @@ module.exports = async ({ getNamedAccounts, deployments, getChainId }) => {
     log(` - TRANSFER_ROLE`);
     await createPermission(acl, avaldao.address, fondoGarantiaVault.address, TRANSFER_ROLE, deployer);
     log(`     - Avaldao: ${avaldao.address}`);
+    await grantPermission(acl, account1, fondoGarantiaVault.address, TRANSFER_ROLE, deployer);
+    log(`     - Account 1: ${account1}`);
     await sleep();
 
     // Inicialización

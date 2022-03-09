@@ -12,10 +12,13 @@
     "rsk-regtest:deploy": "buidler deploy --network rskRegtest",
     "rsk-regtest:found-accounts": "NODE_ENV=regtest node scripts/utils/rsk-fund-accounts.js",
     "rsk-regtest:desbloquear-fondos": "NODE_ENV=regtest node scripts/utils/avaldao-desbloqueo-automatico.js",
+    "rsk-regtest:withdraw": "NODE_ENV=regtest node scripts/utils/avaldao-withdraw.js",
     "rsk-testnet:deploy": "buidler deploy --network rskTestnet",
     "rsk-testnet:desbloquear-fondos": "NODE_ENV=testnet node scripts/utils/avaldao-desbloqueo-automatico.js",
+    "rsk-testnet:withdraw": "NODE_ENV=testnet node scripts/utils/avaldao-withdraw.js",
     "rsk-mainnet:deploy": "buidler deploy --network rskMainnet",
     "rsk-mainnet:desbloquear-fondos": "NODE_ENV=mainnet node scripts/utils/avaldao-desbloqueo-automatico.js",
+    "rsk-mainnet:withdraw": "NODE_ENV=mainnet node scripts/utils/avaldao-withdraw.js",
     "publish:major": "buidler publish major",
     "publish:minor": "buidler publish minor",
     "publish:patch": "buidler publish patch"

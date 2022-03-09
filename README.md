@@ -69,6 +69,12 @@ Las direcciones que aparecen en el log deben utilizarse para configurar la aplic
 
 ### Desarrollo
 
+Si el entorno de desarrollo es Windows, instalar `win-node-env`.
+
+```
+npm install -g win-node-env
+```
+
 En desarrollo se utiliza un nodo local de **RSK Regtest** accesible desde *http://localhost:4444*.
 
 ```
@@ -94,6 +100,14 @@ Para provee de fondos a las cuentas en desarrollo, puede ejecutarse el siguiente
 npm run rsk-regtest:found-accounts
 ```
 
+#### Retirar fondos
+
+Para retirar fondos desde el Fondo de Garantía, puede ejecutarse el siguiente script con la previa configuración de las variables `WITHDRAW_TOKEN`, `WITHDRAW_TO` y `WITHDRAW_VALUE` del archivo `/scripts/utils/.env.regtest`:
+
+```
+npm run rsk-regtest:withdraw
+```
+
 ### Testing
 
 En testing se utiliza el nodo público de **RSK Testnet** accesible desde *https://public-node.testnet.rsk.co*.
@@ -105,6 +119,14 @@ npm run rsk-testnet:deploy
 ```
 - DAO_ADDRESS es la dirección del Aragon DAOdisponible desde el deploy inicial según la red.
 - EXCHANGE_RATE_PROVIDER_ADDRESS es la dirección del *Exchange Rate Provider* a utilizar.
+
+#### Retirar fondos
+
+Para retirar fondos desde el Fondo de Garantía, puede ejecutarse el siguiente script con la previa configuración de las variables `WITHDRAW_TOKEN`, `WITHDRAW_TO` y `WITHDRAW_VALUE` del archivo `/scripts/utils/.env.testnet`:
+
+```
+npm run rsk-testnet:withdraw
+```
 
 ### Producción
 
@@ -150,6 +172,14 @@ node .\scripts\grant-permission.js
 - AVALDAO_CONTRACT_ADDRESS es la dirección del smart contract de Avaldao.
 - ACCOUNT_ADDRESS es la dirección pública de la cuenta a la cual se otorga el permiso.
 - ROLE = ROLE
+
+#### Retirar fondos
+
+Para retirar fondos desde el Fondo de Garantía, puede ejecutarse el siguiente script con la previa configuración de las variables `WITHDRAW_TOKEN`, `WITHDRAW_TO` y `WITHDRAW_VALUE` del archivo `/scripts/utils/.env.mainnet`:
+
+```
+npm run rsk-mainnet:withdraw
+```
 
 ## Principios de desarrollo
 
