@@ -49,14 +49,58 @@ const newApp = async (dao, appName, baseAppAddress, deployer) => {
   )
 
   // Find the deployed proxy address in the tx logs.
-  const logs = receipt.logs
-  const log = logs.find((l) => l.event === 'NewAppProxy')
-  const proxyAddress = log.args.proxy
+  return receipt.logs.find((l) => l.event === 'NewAppProxy').args.proxy
+}
 
-  return proxyAddress
+const setApp = async (dao, appName, baseAppAddress, deployer) => {
+
+  const namespace = await dao.APP_BASES_NAMESPACE();
+  const appId = hash(`${appName}`);
+
+  await dao.setApp(
+    namespace,
+    appId,
+    baseAppAddress,
+    { from: deployer }
+  )
+}
+
+/**
+ * Crea una nueva app en la DAO si aún no existe o cambia la implementación actual.
+ * 
+ * https://hack.aragon.org/docs/kernel_Kernel
+ */
+const newOrSetApp = async (dao, appName, baseAppAddress, deployer) => {
+
+  const namespace = await dao.APP_BASES_NAMESPACE();
+  const appId = hash(`${appName}`);
+
+  let appAddress = await dao.getApp(
+    namespace,
+    appId,
+    { from: deployer }
+  );
+
+  console.log(`newOrSetApp ${appName}: ${appAddress}`);
+
+  let appIsNew = false;
+  if (appAddress === '0x0000000000000000000000000000000000000000') {
+    // La App no existe, por lo que es creada.
+    appIsNew = true;
+    appAddress = await newApp(dao, appName, baseAppAddress, deployer);
+  } else {
+    // La App ya existe, por lo que es actualizada.
+    await setApp(dao, appName, baseAppAddress, deployer);
+  }
+
+  return {
+    isNew: appIsNew,
+    address: appAddress
+  }
 }
 
 module.exports = {
   newDao,
-  newApp
+  newApp,
+  newOrSetApp
 }
