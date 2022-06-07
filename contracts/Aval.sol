@@ -24,7 +24,7 @@ contract Aval is Constants {
     enum CuotaStatus {
         Pendiente,
         Pagada,
-        Reintegrada
+        GarantiaEjecutada
     }
     enum ReclamoStatus {
         Vigente,
@@ -46,7 +46,7 @@ contract Aval is Constants {
         uint256 montoFiat; // Monto de la cuota en moneda fiat;
         uint32 timestampVencimiento; // Timestamp con la fecha de vencimiento de la cuota. 4 bytes.
         uint32 timestampDesbloqueo; // Timestamp con la fecha de desbloqueo de la cuota. 4 bytes.
-        CuotaStatus status; // Estado de la cuota.
+        CuotaStatus status; // Estado de la garantía de la cuota.
     }
 
     /// @dev Estructura que define los datos de un Reclamo.
@@ -76,7 +76,7 @@ contract Aval is Constants {
     event Received(address, uint256);
     event Signed();
     event CuotaUnlock(uint8 numeroCuota);
-    event CuotaReintegrada(uint8 numeroCuota);
+    event CuotaGarantiaEjecutada(uint8 numeroCuota);
     event ReclamoOpen(uint8 numeroReclamo);
     event ReclamoClose(uint8 numeroReclamo);
 
@@ -312,17 +312,17 @@ contract Aval is Constants {
     }
 
     /**
-     * Reintegra los fondos del aval al comerciante.
+     * Ejecuta la garantía y transfiere los fondos del aval al comerciante.
      */
-    function reintegrar() external {
+    function ejecutarGarantia() external {
         // El sender debe ser Avaldao.
         require(avaldao == msg.sender, ERROR_AUTH_FAILED);
-        // El aval solo puede reintegrarse si está vigente.
+        // Solo puede ejecutarse la garantía si el aval está vigente.
         require(status == Status.Vigente, ERROR_AVAL_INVALID_STATUS);
-        // El aval debe tener un reclamo vigente para reintegrar los fondos.
+        // El aval debe tener un reclamo vigente para ejecutar la garantía.
         require(hasReclamoVigente() == true, ERROR_AVAL_SIN_RECLAMO);
-        // Las cuotas a reintegrar son aquellas en estado pendiente y donde la
-        // fecha actual es mayor o igual a su fecha de vencimiento.
+        // Las cuotas sobre las cuales se ejecuta la garantía son aquellas en estado Pendiente
+        // y donde la fecha actual es mayor o igual a su fecha de vencimiento.
         for (uint8 i1 = 0; i1 < cuotasCantidad; i1++) {
             Cuota storage cuota = cuotas[i1];
             if (
@@ -331,12 +331,12 @@ contract Aval is Constants {
             ) {
                 // Se transfiere el monto de la cuota al comerciante.
                 _transferCuotaMonto(cuota, comerciante);
-                // Se actualiza el estado de la cuota a Reintegrada.
-                cuota.status = CuotaStatus.Reintegrada;
-                emit CuotaReintegrada(cuota.numero);
+                // Se actualiza el estado de la garantía de la cuota a ejecutada.
+                cuota.status = CuotaStatus.GarantiaEjecutada;
+                emit CuotaGarantiaEjecutada(cuota.numero);
             }
         }
-        // Se cierra el reclamo vigente actual porque se resolvió reintegrando los fondos.
+        // Se cierra el reclamo vigente actual porque se ejecutó la garantía.
         _closeReclamo();
         if (!hasCuotaPendiente()) {
             // El aval ya no tiene cuotas pendientes, por lo que pasa a estado Finalizado.
