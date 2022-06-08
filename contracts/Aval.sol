@@ -23,7 +23,7 @@ contract Aval is Constants {
     }
     enum CuotaStatus {
         Pendiente,
-        Pagada,
+        GarantiaCancelada,
         GarantiaEjecutada
     }
     enum ReclamoStatus {
@@ -527,9 +527,9 @@ contract Aval is Constants {
             ) {
                 // Se transfiere el monto de la cuota al Fondo de Garantía.
                 _transferCuotaMonto(cuota, avaldaoContract.vault());
-                // Se actualiza el estado de la cuota a Pagada.
+                // Se actualiza el estado de la cuota a Garantía cancelada.
                 // Como se desbloquean los fondos, se asume que la cuota ha sido pagada.
-                cuota.status = CuotaStatus.Pagada;
+                cuota.status = CuotaStatus.GarantiaCancelada;
                 emit CuotaUnlock(cuota.numero);
                 break;
             }
