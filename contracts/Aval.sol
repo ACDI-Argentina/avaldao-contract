@@ -315,8 +315,8 @@ contract Aval is Constants {
      * Ejecuta la garantía y transfiere los fondos del aval al comerciante.
      */
     function ejecutarGarantia() external {
-        // El sender debe ser Avaldao.
-        require(avaldao == msg.sender, ERROR_AUTH_FAILED);
+        // El sender debe ser el Solictante.
+        require(solicitante == msg.sender, ERROR_AUTH_FAILED);
         // Solo puede ejecutarse la garantía si el aval está vigente.
         require(status == Status.Vigente, ERROR_AVAL_INVALID_STATUS);
         // El aval debe tener un reclamo vigente para ejecutar la garantía.
