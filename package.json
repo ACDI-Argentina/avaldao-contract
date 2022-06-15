@@ -16,6 +16,7 @@
     "rsk-testnet:deploy": "buidler deploy --network rskTestnet",
     "rsk-testnet:desbloquear-fondos": "NODE_ENV=testnet node scripts/utils/avaldao-desbloqueo-automatico.js",
     "rsk-testnet:withdraw": "NODE_ENV=testnet node scripts/utils/avaldao-withdraw.js",
+    "rsk-testnet:has-user-role": "NODE_ENV=testnet node scripts/utils/avaldao-has-user-role.js",
     "rsk-mainnet:deploy": "buidler deploy --network rskMainnet",
     "rsk-mainnet:desbloquear-fondos": "NODE_ENV=mainnet node scripts/utils/avaldao-desbloqueo-automatico.js",
     "rsk-mainnet:withdraw": "NODE_ENV=mainnet node scripts/utils/avaldao-withdraw.js",
