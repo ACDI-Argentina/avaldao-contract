@@ -2,7 +2,6 @@ const arg = require("arg");
 
 const Kernel = artifacts.require('@aragon/os/build/contracts/kernel/Kernel')
 const ACL = artifacts.require('@aragon/os/build/contracts/acl/ACL')
-
 const Admin = artifacts.require('Admin')
 const Avaldao = artifacts.require('Avaldao')
 const FondoGarantiaVault = artifacts.require('FondoGarantiaVault')
@@ -34,22 +33,31 @@ module.exports = async ({ getNamedAccounts, deployments, getChainId }) => {
 
     const VERSION = '1';
     const CHAIN_ID = await getChainId();
+    const RBTC = '0x0000000000000000000000000000000000000000';
 
     const { log } = deployments;
     const { deployer, account1, account2, account3, account4, account5 } = await getNamedAccounts();
 
+    console.log(`${new Date().toISOString()}`);
     console.log(`Network: ${CHAIN_ID} ${network}.`);
+
+    // ------------------------------------------------
+    // Aragon DAO
+    // ------------------------------------------------
+
+    log(``);
+    log(`Aragon DAO`);
+    log(`-------------------------------------`);
 
     let dao;
     let acl;
     if (process.env.DAO_ADDRESS) {
         // Se especificó la dirección de la DAO, por lo que no es creada.
-        log(`Aragon DAO upgrade: ${process.env.DAO_ADDRESS}.`);
         dao = await Kernel.at(process.env.DAO_ADDRESS);
         acl = await ACL.at(await dao.acl());
     } else {
         // No se especificó DAO, por lo que es desplegada una nueva.
-        log(`Aragon DAO deploy.`);
+        log(` Deploy Aragon DAO.`);
         // Deploy de la DAO
         const response = await newDao(deployer);
         dao = response.dao;
@@ -60,85 +68,71 @@ module.exports = async ({ getNamedAccounts, deployments, getChainId }) => {
     log(` - DAO: ${dao.address}`);
     log(` - ACL: ${acl.address}`);
 
-    log(`Admin deploy`);
-    const adminBase = await Admin.new({ from: deployer });
-    log(` - Admin Base: ${adminBase.address}`);
-    await sleep();
-    const adminAppAddress = await newApp(dao, 'admin', adminBase.address, deployer);
-    const adminApp = await Admin.at(adminAppAddress);
-    log(` - Admin: ${adminApp.address}`);
-    await sleep();
+    // ------------------------------------------------
+    // Aragon DAO
+    // ------------------------------------------------
 
-    log(`Fondo de Garantía Vault deploy`);
-    const fondoGarantiaVaultBase = await FondoGarantiaVault.new({ from: deployer });
-    log(` - Fondo de Garantía Vault Base: ${fondoGarantiaVaultBase.address}`);
-    await sleep();
-    const fondoGarantiaVaultAppAddress = await newApp(dao, 'fondoGarantiaVault', fondoGarantiaVaultBase.address, deployer);
-    const fondoGarantiaVaultApp = await FondoGarantiaVault.at(fondoGarantiaVaultAppAddress);
-    log(` - Fondo de Garantía Vault: ${fondoGarantiaVaultApp.address}`);
-    await sleep();
+    // ------------------------------------------------
+    // Admin Contract
+    // ------------------------------------------------
 
-    log(`Avaldao deploy`);
-    const avaldaoBase = await Avaldao.new({ from: deployer/*, gas: 6800000*/ });
-    log(` - Avaldao Base: ${avaldaoBase.address}`);
-    await sleep();
-    const avaldaoAppAddress = await newApp(dao, 'avaldao', avaldaoBase.address, deployer);
-    const avaldaoApp = await Avaldao.at(avaldaoAppAddress);
-    log(` - Avaldao: ${avaldaoApp.address}`);
-    await sleep();
+    log(``);
+    log(`Admin Contract`);
+    log(`-------------------------------------`);
 
-    // Configuración de grupos y permisos
+    let adminApp;
+    if (process.env.ADMIN_CONTRACT_ADDRESS) {
+        // Se especificó la dirección del Admin, por lo que no es creado.
+        const adminApp = await Admin.at(process.env.ADMIN_CONTRACT_ADDRESS);
+        log(` - Admin: ${adminApp.address}`);
+    } else {
+        // No se especificó el Admin, por lo que es desplegado uno nuevo.
+        log(` Deploy Admin`);
+        const adminBase = await Admin.new({ from: deployer });
+        log(` - Admin Base: ${adminBase.address}`);
+        await sleep();
+        const adminAppAddress = await newApp(dao, 'admin', adminBase.address, deployer);
+        adminApp = await Admin.at(adminAppAddress);
+        log(` - Admin: ${adminApp.address}`);
+        await sleep();
 
-    log(`Set permissions`);
+        // Perimisos de Administración
+        log(` Permisos`);
+        let CREATE_PERMISSIONS_ROLE = await acl.CREATE_PERMISSIONS_ROLE();
+        log(` - CREATE_PERMISSIONS_ROLE`);
+        await grantPermission(acl, adminApp.address, acl.address, CREATE_PERMISSIONS_ROLE, deployer);
+        log(`   - User: ${deployer}`);
+        await sleep();
 
-    let CREATE_PERMISSIONS_ROLE = await acl.CREATE_PERMISSIONS_ROLE();
-    let SET_EXCHANGE_RATE_PROVIDER_ROLE = await fondoGarantiaVaultBase.SET_EXCHANGE_RATE_PROVIDER_ROLE();
-    let ENABLE_TOKEN_ROLE = await fondoGarantiaVaultBase.ENABLE_TOKEN_ROLE();
-    let TRANSFER_ROLE = await fondoGarantiaVaultBase.TRANSFER_ROLE()
+        await adminApp.initialize(adminApp.address, account1);
+        log(` - Admin initialized`);
+        await sleep();
+    }
 
-    log(` - CREATE_PERMISSIONS_ROLE`);
-    await grantPermission(acl, adminApp.address, acl.address, CREATE_PERMISSIONS_ROLE, deployer);
-    await sleep();
+    // ------------------------------------------------
+    // Admin Contract
+    // ------------------------------------------------
 
-    log(` - SET_EXCHANGE_RATE_PROVIDER_ROLE`);
-    await createPermission(acl, deployer, fondoGarantiaVaultApp.address, SET_EXCHANGE_RATE_PROVIDER_ROLE, deployer);
-    log(`     - Deployer: ${deployer}`);
-    await sleep();
+    // ------------------------------------------------
+    // Exchange Rate Provider Contract
+    // ------------------------------------------------
 
-    log(` - ENABLE_TOKEN_ROLE`);
-    await createPermission(acl, deployer, fondoGarantiaVaultApp.address, ENABLE_TOKEN_ROLE, deployer);
-    log(`     - Deployer: ${deployer}`);
-    await sleep();
-
-    log(` - TRANSFER_ROLE`);
-    await createPermission(acl, avaldaoApp.address, fondoGarantiaVaultApp.address, TRANSFER_ROLE, deployer);
-    log(`     - Avaldao: ${avaldaoApp.address}`);
-    await grantPermission(acl, account1, fondoGarantiaVaultApp.address, TRANSFER_ROLE, deployer);
-    log(`     - Account 1: ${account1}`);
-    await sleep();
-
-    // Se inicializan los contratos.
-
-    await adminApp.initialize(adminApp.address, account1);
-    log(`Admin initialized`);
-    await sleep();
-
-    // ERC20 Token
-
-    log(`- ERC20 Tokens`);
+    log(``);
+    log(`Exchange Rate Provider Contract`);
+    log(`-------------------------------------`);
 
     let rifAddress;
     let docAddress;
     let DOC_PRICE = new BN('00001000000000000000000'); // Precio del DOC: 1,00 US$
     if (network === "rskRegtest") {
 
+        log(` Deploy token mocks`);
+
         let rifTokenMock = await RifTokenMock.new({ from: deployer });
         rifAddress = rifTokenMock.address;
-        log(` - RifTokenMock: ${rifAddress}`);
 
         let docTokenMock = await DocTokenMock.new({ from: deployer });
         docAddress = docTokenMock.address;
-        log(` - DocTokenMock: ${docAddress}`);
 
     } else if (network === "rskTestnet") {
 
@@ -151,16 +145,16 @@ module.exports = async ({ getNamedAccounts, deployments, getChainId }) => {
         docAddress = '0xe700691dA7b9851F2F35f8b8182c69c53CcaD9Db';
     }
 
+    log(` - Rif Token: ${rifAddress}`);
+    log(` - Doc Token: ${docAddress}`);
+
     // Exchange Rate
-
-    log(`- RBTC Exchange Rate`);
-
-    const RBTC = '0x0000000000000000000000000000000000000000';
 
     let moCStateAddress;
     let roCStateAddress;
 
     if (network === "rskRegtest") {
+        log(` Deploy state mocks`);
         const RBTC_PRICE = new BN('58172000000000000000000'); // Precio del RBTC: 58172,00 US$
         const moCStateMock = await MoCStateMock.new(RBTC_PRICE, { from: deployer });
         moCStateAddress = moCStateMock.address;
@@ -179,16 +173,16 @@ module.exports = async ({ getNamedAccounts, deployments, getChainId }) => {
         roCStateAddress = "0x541F68a796Fe5ae3A381d2Aa5a50b975632e40A6";
     }
 
-    log(` - MoCState: ${moCStateAddress}`);
-    log(` - RoCState: ${roCStateAddress}`);
+    log(` - MoC State: ${moCStateAddress}`);
+    log(` - RoC State: ${roCStateAddress}`);
 
     let exchangeRateProviderAddress;
-    if (process.env.EXCHANGE_RATE_PROVIDER_ADDRESS) {
+    if (process.env.EXCHANGE_RATE_PROVIDER_CONTRACT_ADDRESS) {
         // Se especificó la dirección del Exchange Rate Provider, por lo que no es creado.
-        exchangeRateProviderAddress = process.env.EXCHANGE_RATE_PROVIDER_ADDRESS;
+        exchangeRateProviderAddress = process.env.EXCHANGE_RATE_PROVIDER_CONTRACT_ADDRESS;
     } else {
         // No se especificó la dirección del Exchange Rate Provider, por lo que es creado.
-        log(`Exchange Rate Provider deploy.`);
+        log(` Deploy Exchange Rate Provider.`);
         const exchangeRateProvider = await ExchangeRateProvider.new(
             moCStateAddress,
             roCStateAddress,
@@ -200,27 +194,111 @@ module.exports = async ({ getNamedAccounts, deployments, getChainId }) => {
         await sleep();
     }
 
-    await fondoGarantiaVaultApp.initialize();
-    log(`Fondo de Garantía Vault initialized`);
+    log(` - Exchange Rate Provider: ${exchangeRateProviderAddress}`);
 
-    log(` - ExchangeRateProvider: ${exchangeRateProviderAddress}`);
+    // ------------------------------------------------
+    // Exchange Rate Provider Contract
+    // ------------------------------------------------
+
+    // ------------------------------------------------
+    // Fondo de Garantía Contract
+    // ------------------------------------------------
+
+    log(``);
+    log(`Fondo de Garantía Contract`);
+    log(`-------------------------------------`);
+
+    log(` Deploy Fondo de Garantía`);
+    const fondoGarantiaVaultBase = await FondoGarantiaVault.new({ from: deployer });
+    log(` - Fondo de Garantía Vault Base: ${fondoGarantiaVaultBase.address}`);
+    await sleep();
+    const fondoGarantiaVaultAppAddress = await newApp(dao, 'fondoGarantiaVault', fondoGarantiaVaultBase.address, deployer);
+    const fondoGarantiaVaultApp = await FondoGarantiaVault.at(fondoGarantiaVaultAppAddress);
+    log(` - Fondo de Garantía Vault: ${fondoGarantiaVaultApp.address}`);
+    await sleep();
+
+    // ------------------------------------------------
+    // Fondo de Garantía Contract
+    // ------------------------------------------------
+
+    // ------------------------------------------------
+    // Avaldao Contract
+    // ------------------------------------------------
+
+    log(``);
+    log(`Avaldao Contract`);
+    log(`-------------------------------------`);
+
+    log(` Deploy Avaldao`);
+    const avaldaoBase = await Avaldao.new({ from: deployer/*, gas: 6800000*/ });
+    log(` - Avaldao Base: ${avaldaoBase.address}`);
+    await sleep();
+    const avaldaoAppAddress = await newApp(dao, 'avaldao', avaldaoBase.address, deployer);
+    const avaldaoApp = await Avaldao.at(avaldaoAppAddress);
+    log(` - Avaldao: ${avaldaoApp.address}`);
+    await sleep();
+
+    // ------------------------------------------------
+    // Avaldao Contract
+    // ------------------------------------------------
+
+    // ------------------------------------------------
+    // Permisos
+    // ------------------------------------------------
+
+    log(``);
+    log(`Permisos`);
+    log(`-------------------------------------`);
+
+    let SET_EXCHANGE_RATE_PROVIDER_ROLE = await fondoGarantiaVaultBase.SET_EXCHANGE_RATE_PROVIDER_ROLE();
+    let ENABLE_TOKEN_ROLE = await fondoGarantiaVaultBase.ENABLE_TOKEN_ROLE();
+    let TRANSFER_ROLE = await fondoGarantiaVaultBase.TRANSFER_ROLE()
+
+    log(` - SET_EXCHANGE_RATE_PROVIDER_ROLE`);
+    await createPermission(acl, deployer, fondoGarantiaVaultApp.address, SET_EXCHANGE_RATE_PROVIDER_ROLE, deployer);
+    log(`   - User: ${deployer}`);
+    await sleep();
+
+    log(` - ENABLE_TOKEN_ROLE`);
+    await createPermission(acl, deployer, fondoGarantiaVaultApp.address, ENABLE_TOKEN_ROLE, deployer);
+    log(`   - User: ${deployer}`);
+    await sleep();
+
+    log(` - TRANSFER_ROLE`);
+    await createPermission(acl, avaldaoApp.address, fondoGarantiaVaultApp.address, TRANSFER_ROLE, deployer);
+    log(`   - Contract: ${avaldaoApp.address}`);
+    await grantPermission(acl, account1, fondoGarantiaVaultApp.address, TRANSFER_ROLE, deployer);
+    log(`   - User: ${account1}`);
+    await sleep();
+
+    // ------------------------------------------------
+    // Permisos
+    // ------------------------------------------------
+
+    // ------------------------------------------------
+    // Inicialización
+    // ------------------------------------------------
+
+    log(``);
+    log(`Inicialización`);
+    log(`-------------------------------------`);
+
+    await fondoGarantiaVaultApp.initialize();
+    await sleep();
     await fondoGarantiaVaultApp.setExchangeRateProvider(exchangeRateProviderAddress, { from: deployer });
     await sleep();
-
-    log(`Enable token funds`);
-
     await fondoGarantiaVaultApp.enableToken(RBTC, { from: deployer });
-    log(` - Enable RBTC`);
     await sleep();
-
     await fondoGarantiaVaultApp.enableToken(rifAddress, { from: deployer });
-    log(` - RifToken`);
     await sleep();
-
     await fondoGarantiaVaultApp.enableToken(docAddress, { from: deployer });
-    log(` - DocToken`);
+    log(` - Fondo de Garantía Vault initialized`);
     await sleep();
 
     await avaldaoApp.initialize(fondoGarantiaVaultApp.address, "Avaldao", VERSION, CHAIN_ID, avaldaoApp.address);
-    log(`Avaldao initialized`);
+    log(` - Avaldao initialized`);
+
+    // ------------------------------------------------
+    // Inicialización
+    // ------------------------------------------------    
 }

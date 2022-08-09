@@ -85,12 +85,14 @@ Opcionalmente, puede especificarse qué *DAO* o *Exchange Rate Provider* utiliza
 
 ```
 $env:DAO_ADDRESS="..."
-$env:EXCHANGE_RATE_PROVIDER_ADDRESS="..."
+$env:ADMIN_CONTRACT_ADDRESS="..."
+$env:EXCHANGE_RATE_PROVIDER_CONTRACT_ADDRESS="..."
 npm run rsk-regtest:deploy
 ```
 
 - DAO_ADDRESS es la dirección del Aragon DAOdisponible desde el deploy inicial según la red.
-- EXCHANGE_RATE_PROVIDER_ADDRESS es la dirección del *Exchange Rate Provider* a utilizar.
+- ADMIN_CONTRACT_ADDRESS es la dirección del smart contract de administración.
+- EXCHANGE_RATE_PROVIDER_CONTRACT_ADDRESS es la dirección del *Exchange Rate Provider* a utilizar.
 
 #### Proveer de fondos
 
@@ -114,11 +116,11 @@ En testing se utiliza el nodo público de **RSK Testnet** accesible desde *https
 
 ```
 $env:DAO_ADDRESS="..."
-$env:EXCHANGE_RATE_PROVIDER_ADDRESS="..."
+$env:EXCHANGE_RATE_PROVIDER_CONTRACT_ADDRESS="..."
 npm run rsk-testnet:deploy
 ```
 - DAO_ADDRESS es la dirección del Aragon DAOdisponible desde el deploy inicial según la red.
-- EXCHANGE_RATE_PROVIDER_ADDRESS es la dirección del *Exchange Rate Provider* a utilizar.
+- EXCHANGE_RATE_PROVIDER_CONTRACT_ADDRESS es la dirección del *Exchange Rate Provider* a utilizar.
 
 #### Retirar fondos
 
@@ -134,11 +136,11 @@ En testing se utiliza el nodo público de **RSK Mainnet** accesible desde *https
 
 ```
 $env:DAO_ADDRESS="..."
-$env:EXCHANGE_RATE_PROVIDER_ADDRESS="..."
+$env:EXCHANGE_RATE_PROVIDER_CONTRACT_ADDRESS="..."
 npm run rsk-mainnet:deploy
 ```
 - DAO_ADDRESS es la dirección del Aragon DAOdisponible desde el deploy inicial según la red.
-- EXCHANGE_RATE_PROVIDER_ADDRESS es la dirección del *Exchange Rate Provider* a utilizar.
+- EXCHANGE_RATE_PROVIDER_CONTRACT_ADDRESS es la dirección del *Exchange Rate Provider* a utilizar.
 
 ## Actualizar smart contract
 

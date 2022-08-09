@@ -1,10 +1,10 @@
 pragma solidity ^0.4.24;
 pragma experimental ABIEncoderV2;
 
+import "@acdi/efem-contract/contracts/ExchangeRateProvider.sol";
 import "@aragon/os/contracts/lib/math/SafeMath.sol";
 import "@aragon/apps-vault/contracts/Vault.sol";
 import "./Constants.sol";
-import "./ExchangeRateProvider.sol";
 
 /**
  * @title Vault de Fondo de Garantía.

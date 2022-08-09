@@ -1,0 +1,37 @@
+// This is a CJSON file (JSON with comments)
+// Copia los smart contracts del proyecto común de El Futuro está en el Monte.
+{
+    "copyFiles": [
+        {
+            "from": "node_modules/@acdi/efem-contract/artifacts/Admin.json",
+            "to": "artifacts/Admin.json"
+        },
+        {
+            "from": "node_modules/@acdi/efem-contract/artifacts/ExchangeRateProvider.json",
+            "to": "artifacts/ExchangeRateProvider.json"
+        },
+        {
+            "from": "node_modules/@acdi/efem-contract/artifacts/MoCStateMock.json",
+            "to": "artifacts/MoCStateMock.json"
+        },
+        {
+            "from": "node_modules/@acdi/efem-contract/artifacts/RoCStateMock.json",
+            "to": "artifacts/RoCStateMock.json"
+        },
+        {
+            "from": "node_modules/@acdi/efem-contract/artifacts/DocTokenMock.json",
+            "to": "artifacts/DocTokenMock.json"
+        },
+        {
+            "from": "node_modules/@acdi/efem-contract/artifacts/RifTokenMock.json",
+            "to": "artifacts/RifTokenMock.json"
+        },
+        {
+            "from": "node_modules/@acdi/efem-contract/artifacts/*.json",
+            "to": "artifacts/"
+        }
+    ],
+    "copyFilesSettings": {
+        "whenFileExists": "overwrite"
+    }
+}

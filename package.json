@@ -5,26 +5,31 @@
   "main": "index.js",
   "scripts": {
     "build-app": "cd app && npm install && cd ..",
-    "compile": "buidler compile --force",
+    "compile": "copy-files-from-to && buidler compile --force",
     "test": "buidler test --network buidlerevm",
     "start": "buidler start",
     "test:rsk": "buidler test --network rskRegtest",
-    "rsk-regtest:deploy": "buidler deploy --network rskRegtest",
+    
+    "rsk-regtest:deploy": "npm run compile && buidler deploy --network rskRegtest",
     "rsk-regtest:found-accounts": "NODE_ENV=regtest node scripts/utils/rsk-fund-accounts.js",
     "rsk-regtest:desbloquear-fondos": "NODE_ENV=regtest node scripts/utils/avaldao-desbloqueo-automatico.js",
     "rsk-regtest:withdraw": "NODE_ENV=regtest node scripts/utils/avaldao-withdraw.js",
-    "rsk-testnet:deploy": "buidler deploy --network rskTestnet",
+    
+    "rsk-testnet:deploy": "npm run compile && buidler deploy --network rskTestnet",
     "rsk-testnet:desbloquear-fondos": "NODE_ENV=testnet node scripts/utils/avaldao-desbloqueo-automatico.js",
     "rsk-testnet:withdraw": "NODE_ENV=testnet node scripts/utils/avaldao-withdraw.js",
     "rsk-testnet:has-user-role": "NODE_ENV=testnet node scripts/utils/avaldao-has-user-role.js",
-    "rsk-mainnet:deploy": "buidler deploy --network rskMainnet",
+    
+    "rsk-mainnet:deploy": "npm run compile && buidler deploy --network rskMainnet",
     "rsk-mainnet:desbloquear-fondos": "NODE_ENV=mainnet node scripts/utils/avaldao-desbloqueo-automatico.js",
     "rsk-mainnet:withdraw": "NODE_ENV=mainnet node scripts/utils/avaldao-withdraw.js",
+    
     "publish:major": "buidler publish major",
     "publish:minor": "buidler publish minor",
     "publish:patch": "buidler publish patch"
   },
   "dependencies": {
+    "@acdi/efem-contract": "C:\\dev\\acdi\\project\\efem-contract",
     "@aragon/apps-vault": "^4.1.0",
     "@aragon/os": "^4.4.0",
     "@ethereumjs/common": "^2.6.2",
@@ -46,7 +51,8 @@
     "abi-decoder": "^2.3.0",
     "arg": "^4.1.3",
     "web3": "^1.2.0",
-    "eth-ens-namehash": "^2.0.8"
+    "eth-ens-namehash": "^2.0.8",
+    "copy-files-from-to": "^3.2.2"
   },
   "optionalDependencies": {
     "win-node-env": "^0.6.0"

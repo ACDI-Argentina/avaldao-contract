@@ -1,13 +1,20 @@
 pragma solidity ^0.4.24;
 
-import "./RoleConstants.sol";
+import "@acdi/efem-contract/contracts/EfemConstants.sol";
 import "@aragon/os/contracts/common/EtherTokenConstant.sol";
 
 /**
  * @title Constantes útiles del contrato Avaldao.
  * @author ACDI
  */
-contract Constants is RoleConstants, EtherTokenConstant {
+contract Constants is EfemConstants, EtherTokenConstant {
+    // Grupos de Avaldao
+
+    bytes32 public constant AVALDAO_ROLE = keccak256("AVALDAO_ROLE");
+    bytes32 public constant SOLICITANTE_ROLE = keccak256("SOLICITANTE_ROLE");
+    bytes32 public constant COMERCIANTE_ROLE = keccak256("COMERCIANTE_ROLE");
+    bytes32 public constant AVALADO_ROLE = keccak256("AVALADO_ROLE");
+
     // Errores
 
     string internal constant ERROR_AUTH_FAILED = "AVALDAO_AUTH_FAILED";
