@@ -81,16 +81,16 @@ En desarrollo se utiliza un nodo local de **RSK Regtest** accesible desde *http:
 npm run rsk-regtest:deploy
 ```
 
-Opcionalmente, puede especificarse qué *DAO* o *Exchange Rate Provider* utilizar en el deploy:
+Opcionalmente, puede especificarse qué *DAO*, *Admin* o *Exchange Rate Provider* utilizar en el deploy:
 
 ```
-$env:DAO_ADDRESS="..."
+$env:DAO_CONTRACT_ADDRESS="..."
 $env:ADMIN_CONTRACT_ADDRESS="..."
 $env:EXCHANGE_RATE_PROVIDER_CONTRACT_ADDRESS="..."
 npm run rsk-regtest:deploy
 ```
 
-- DAO_ADDRESS es la dirección del Aragon DAOdisponible desde el deploy inicial según la red.
+- DAO_CONTRACT_ADDRESS es la dirección del Aragon DAOdisponible desde el deploy inicial según la red.
 - ADMIN_CONTRACT_ADDRESS es la dirección del smart contract de administración.
 - EXCHANGE_RATE_PROVIDER_CONTRACT_ADDRESS es la dirección del *Exchange Rate Provider* a utilizar.
 
@@ -115,11 +115,13 @@ npm run rsk-regtest:withdraw
 En testing se utiliza el nodo público de **RSK Testnet** accesible desde *https://public-node.testnet.rsk.co*.
 
 ```
-$env:DAO_ADDRESS="..."
+$env:DAO_CONTRACT_ADDRESS="..."
+$env:ADMIN_CONTRACT_ADDRESS="..."
 $env:EXCHANGE_RATE_PROVIDER_CONTRACT_ADDRESS="..."
 npm run rsk-testnet:deploy
 ```
-- DAO_ADDRESS es la dirección del Aragon DAOdisponible desde el deploy inicial según la red.
+- DAO_CONTRACT_ADDRESS es la dirección del Aragon DAOdisponible desde el deploy inicial según la red.
+- ADMIN_CONTRACT_ADDRESS es la dirección del smart contract de administración.
 - EXCHANGE_RATE_PROVIDER_CONTRACT_ADDRESS es la dirección del *Exchange Rate Provider* a utilizar.
 
 #### Retirar fondos
@@ -135,11 +137,11 @@ npm run rsk-testnet:withdraw
 En testing se utiliza el nodo público de **RSK Mainnet** accesible desde *https://public-node.rsk.coo*.
 
 ```
-$env:DAO_ADDRESS="..."
+$env:DAO_CONTRACT_ADDRESS="..."
 $env:EXCHANGE_RATE_PROVIDER_CONTRACT_ADDRESS="..."
 npm run rsk-mainnet:deploy
 ```
-- DAO_ADDRESS es la dirección del Aragon DAOdisponible desde el deploy inicial según la red.
+- DAO_CONTRACT_ADDRESS es la dirección del Aragon DAOdisponible desde el deploy inicial según la red.
 - EXCHANGE_RATE_PROVIDER_CONTRACT_ADDRESS es la dirección del *Exchange Rate Provider* a utilizar.
 
 ## Actualizar smart contract
@@ -148,12 +150,12 @@ Para actualizar el smart contract debe ejecutarse el siguiente script, especific
 
 ```
 $env:BUIDLER_NETWORK="..."
-$env:DAO_ADDRESS="..."
+$env:DAO_CONTRACT_ADDRESS="..."
 node .\scripts\upgrade.js
 ```
 
 - BUIDLER_NETWORK = rskRegtest | rskTestnet | rskMainnet
-- DAO_ADDRESS es la dirección del Aragon DAOdisponible desde el deploy inicial según la red.
+- DAO_CONTRACT_ADDRESS es la dirección del Aragon DAOdisponible desde el deploy inicial según la red.
 
 Este scrtip es genérico para una actualización. Las actualización generalmente siguen scrtip específicos según los cambios en la versión. A continuación se lista los upgrades.
 
@@ -163,14 +165,14 @@ Para otorgar permisos debe ejecutarse el siguiente script, especificando los par
 
 ```
 $env:BUIDLER_NETWORK="..."
-$env:DAO_ADDRESS="..."
+$env:DAO_CONTRACT_ADDRESS="..."
 $env:AVALDAO_CONTRACT_ADDRESS="..."
 $env:ACCOUNT_ADDRESS="..."
 $env:ROLE="..."
 node .\scripts\grant-permission.js
 ```
 - BUIDLER_NETWORK = rskRegtest | rskTestnet | rskMainnet
-- DAO_ADDRESS es la dirección del Aragon DAO disponible desde el deploy inicial según la red.
+- DAO_CONTRACT_ADDRESS es la dirección del Aragon DAO disponible desde el deploy inicial según la red.
 - AVALDAO_CONTRACT_ADDRESS es la dirección del smart contract de Avaldao.
 - ACCOUNT_ADDRESS es la dirección pública de la cuenta a la cual se otorga el permiso.
 - ROLE = ROLE

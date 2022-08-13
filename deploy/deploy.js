@@ -51,9 +51,9 @@ module.exports = async ({ getNamedAccounts, deployments, getChainId }) => {
 
     let dao;
     let acl;
-    if (process.env.DAO_ADDRESS) {
+    if (process.env.DAO_CONTRACT_ADDRESS) {
         // Se especificó la dirección de la DAO, por lo que no es creada.
-        dao = await Kernel.at(process.env.DAO_ADDRESS);
+        dao = await Kernel.at(process.env.DAO_CONTRACT_ADDRESS);
         acl = await ACL.at(await dao.acl());
     } else {
         // No se especificó DAO, por lo que es desplegada una nueva.
@@ -121,80 +121,80 @@ module.exports = async ({ getNamedAccounts, deployments, getChainId }) => {
     log(`Exchange Rate Provider Contract`);
     log(`-------------------------------------`);
 
-    let rifAddress;
-    let docAddress;
-    let DOC_PRICE = new BN('00001000000000000000000'); // Precio del DOC: 1,00 US$
-    if (network === "rskRegtest") {
-
-        log(` Deploy token mocks`);
-
-        let rifTokenMock = await RifTokenMock.new({ from: deployer });
-        rifAddress = rifTokenMock.address;
-
-        let docTokenMock = await DocTokenMock.new({ from: deployer });
-        docAddress = docTokenMock.address;
-
-    } else if (network === "rskTestnet") {
-
-        rifAddress = '0x19f64674d8a5b4e652319f5e239efd3bc969a1fe';
-        docAddress = '0xCB46c0ddc60D18eFEB0E586C17Af6ea36452Dae0';
-
-    } else if (network === "rskMainnet") {
-
-        rifAddress = '0x2acc95758f8b5f583470ba265eb685a8f45fc9d5';
-        docAddress = '0xe700691dA7b9851F2F35f8b8182c69c53CcaD9Db';
-    }
-
-    log(` - Rif Token: ${rifAddress}`);
-    log(` - Doc Token: ${docAddress}`);
-
-    // Exchange Rate
-
-    let moCStateAddress;
-    let roCStateAddress;
-
-    if (network === "rskRegtest") {
-        log(` Deploy state mocks`);
-        const RBTC_PRICE = new BN('58172000000000000000000'); // Precio del RBTC: 58172,00 US$
-        const moCStateMock = await MoCStateMock.new(RBTC_PRICE, { from: deployer });
-        moCStateAddress = moCStateMock.address;
-        const RIF_PRICE = new BN('00000391974000000000000'); // Precio del RIF: 0,391974 US$
-        const roCStateMock = await RoCStateMock.new(RIF_PRICE, { from: deployer });
-        roCStateAddress = roCStateMock.address;
-    } else if (network === "rskTestnet") {
-        // MoCState de MOC Oracles en Testnet 
-        moCStateAddress = "0x0adb40132cB0ffcEf6ED81c26A1881e214100555";
-        // RoCState de MOC Oracles en Testnet 
-        roCStateAddress = "0x496eD67F77D044C8d9471fe86085Ccb5DC4d2f63";
-    } else if (network === "rskMainnet") {
-        // MoCState de MOC Oracles en Mainnet 
-        moCStateAddress = "0xb9C42EFc8ec54490a37cA91c423F7285Fa01e257";
-        // RoCState de MOC Oracles en Mainnet 
-        roCStateAddress = "0x541F68a796Fe5ae3A381d2Aa5a50b975632e40A6";
-    }
-
-    log(` - MoC State: ${moCStateAddress}`);
-    log(` - RoC State: ${roCStateAddress}`);
-
-    let exchangeRateProviderAddress;
+    let exchangeRateProvider;
     if (process.env.EXCHANGE_RATE_PROVIDER_CONTRACT_ADDRESS) {
         // Se especificó la dirección del Exchange Rate Provider, por lo que no es creado.
-        exchangeRateProviderAddress = process.env.EXCHANGE_RATE_PROVIDER_CONTRACT_ADDRESS;
+        exchangeRateProvider = await ExchangeRateProvider.at(process.env.EXCHANGE_RATE_PROVIDER_CONTRACT_ADDRESS);
     } else {
+
+        let rifAddress;
+        let docAddress;
+        let DOC_PRICE = new BN('00001000000000000000000'); // Precio del DOC: 1,00 US$
+        if (network === "rskRegtest") {
+    
+            log(` Deploy token mocks`);
+    
+            let rifTokenMock = await RifTokenMock.new({ from: deployer });
+            rifAddress = rifTokenMock.address;
+    
+            let docTokenMock = await DocTokenMock.new({ from: deployer });
+            docAddress = docTokenMock.address;
+    
+        } else if (network === "rskTestnet") {
+    
+            rifAddress = '0x19f64674d8a5b4e652319f5e239efd3bc969a1fe';
+            docAddress = '0xCB46c0ddc60D18eFEB0E586C17Af6ea36452Dae0';
+    
+        } else if (network === "rskMainnet") {
+    
+            rifAddress = '0x2acc95758f8b5f583470ba265eb685a8f45fc9d5';
+            docAddress = '0xe700691dA7b9851F2F35f8b8182c69c53CcaD9Db';
+        }
+    
+        log(` - Rif Token: ${rifAddress}`);
+        log(` - Doc Token: ${docAddress}`);
+    
+        // Exchange Rate
+    
+        let moCStateAddress;
+        let roCStateAddress;
+    
+        if (network === "rskRegtest") {
+            log(` Deploy state mocks`);
+            const RBTC_PRICE = new BN('58172000000000000000000'); // Precio del RBTC: 58172,00 US$
+            const moCStateMock = await MoCStateMock.new(RBTC_PRICE, { from: deployer });
+            moCStateAddress = moCStateMock.address;
+            const RIF_PRICE = new BN('00000391974000000000000'); // Precio del RIF: 0,391974 US$
+            const roCStateMock = await RoCStateMock.new(RIF_PRICE, { from: deployer });
+            roCStateAddress = roCStateMock.address;
+        } else if (network === "rskTestnet") {
+            // MoCState de MOC Oracles en Testnet 
+            moCStateAddress = "0x0adb40132cB0ffcEf6ED81c26A1881e214100555";
+            // RoCState de MOC Oracles en Testnet 
+            roCStateAddress = "0x496eD67F77D044C8d9471fe86085Ccb5DC4d2f63";
+        } else if (network === "rskMainnet") {
+            // MoCState de MOC Oracles en Mainnet 
+            moCStateAddress = "0xb9C42EFc8ec54490a37cA91c423F7285Fa01e257";
+            // RoCState de MOC Oracles en Mainnet 
+            roCStateAddress = "0x541F68a796Fe5ae3A381d2Aa5a50b975632e40A6";
+        }
+    
+        log(` - MoC State: ${moCStateAddress}`);
+        log(` - RoC State: ${roCStateAddress}`);
+
         // No se especificó la dirección del Exchange Rate Provider, por lo que es creado.
         log(` Deploy Exchange Rate Provider.`);
-        const exchangeRateProvider = await ExchangeRateProvider.new(
+        exchangeRateProvider = await ExchangeRateProvider.new(
             moCStateAddress,
             roCStateAddress,
             rifAddress,
             docAddress,
             DOC_PRICE,
             { from: deployer });
-        exchangeRateProviderAddress = exchangeRateProvider.address;
         await sleep();
     }
 
-    log(` - Exchange Rate Provider: ${exchangeRateProviderAddress}`);
+    log(` - Exchange Rate Provider: ${exchangeRateProvider.address}`);
 
     // ------------------------------------------------
     // Exchange Rate Provider Contract
@@ -285,13 +285,13 @@ module.exports = async ({ getNamedAccounts, deployments, getChainId }) => {
 
     await fondoGarantiaVaultApp.initialize();
     await sleep();
-    await fondoGarantiaVaultApp.setExchangeRateProvider(exchangeRateProviderAddress, { from: deployer });
+    await fondoGarantiaVaultApp.setExchangeRateProvider(exchangeRateProvider.address, { from: deployer });
     await sleep();
     await fondoGarantiaVaultApp.enableToken(RBTC, { from: deployer });
     await sleep();
-    await fondoGarantiaVaultApp.enableToken(rifAddress, { from: deployer });
+    await fondoGarantiaVaultApp.enableToken(await exchangeRateProvider.RIF(), { from: deployer });
     await sleep();
-    await fondoGarantiaVaultApp.enableToken(docAddress, { from: deployer });
+    await fondoGarantiaVaultApp.enableToken(await exchangeRateProvider.DOC(), { from: deployer });
     log(` - Fondo de Garantía Vault initialized`);
     await sleep();
 

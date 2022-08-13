@@ -29,7 +29,7 @@
     "publish:patch": "buidler publish patch"
   },
   "dependencies": {
-    "@acdi/efem-contract": "C:\\dev\\acdi\\project\\efem-contract",
+    "@acdi/efem-contract": "1.0.0",
     "@aragon/apps-vault": "^4.1.0",
     "@aragon/os": "^4.4.0",
     "@ethereumjs/common": "^2.6.2",
