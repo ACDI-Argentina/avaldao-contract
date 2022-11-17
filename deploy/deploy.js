@@ -1,22 +1,31 @@
 const arg = require("arg");
 
+const args = arg({ '--network': String }, process.argv);
+const network = args["--network"] || "rskRegtest";
+
+const { /*newDao,*/ newApp } = require('../scripts/dao')
+const { createPermission, grantPermission } = require('../scripts/permissions')
+const BN = require('bn.js');
+
 const Kernel = artifacts.require('@aragon/os/build/contracts/kernel/Kernel')
 const ACL = artifacts.require('@aragon/os/build/contracts/acl/ACL')
+
+const EVMScriptRegistryFactory = artifacts.require(
+    '@aragon/os/build/contracts/factory/EVMScriptRegistryFactory'
+)
+const DAOFactory = artifacts.require(
+    '@aragon/os/build/contracts/factory/DAOFactory'
+)
+const { getEventArgument } = require('@aragon/contract-test-helpers/events')
+
 const Admin = artifacts.require('Admin')
-const Avaldao = artifacts.require('Avaldao')
-const FondoGarantiaVault = artifacts.require('FondoGarantiaVault')
 const MoCStateMock = artifacts.require('MoCStateMock');
 const RoCStateMock = artifacts.require('RoCStateMock');
 const DocTokenMock = artifacts.require('DocTokenMock');
 const RifTokenMock = artifacts.require('RifTokenMock');
 const ExchangeRateProvider = artifacts.require('ExchangeRateProvider');
-const BN = require('bn.js');
-
-const { newDao, newApp } = require('../scripts/dao')
-const { createPermission, grantPermission } = require('../scripts/permissions')
-
-const args = arg({ '--network': String }, process.argv);
-const network = args["--network"] || "rskRegtest";
+const Avaldao = artifacts.require('Avaldao')
+const FondoGarantiaVault = artifacts.require('FondoGarantiaVault')
 
 function sleep() {
     if (network === "rskTestnet") {
@@ -27,6 +36,90 @@ function sleep() {
         return new Promise(resolve => setTimeout(resolve, 300000));
     }
     return new Promise(resolve => setTimeout(resolve, 1));
+}
+
+const newDao = async (deployer) => {
+
+    let dao;
+    let acl;
+
+    if (process.env.DAO_CONTRACT_ADDRESS) {
+
+        // Se especificó la dirección de la DAO, por lo que no es creada.
+        dao = await Kernel.at(process.env.DAO_CONTRACT_ADDRESS);
+        acl = await ACL.at(await dao.acl());
+
+    } else {
+
+        console.log(` Deploy Aragon DAO.`);
+
+        let kernelBase;
+        if (process.env.DAO_KERNEL_BASE_ADDRESS) {
+            // Se especificó la dirección del DAO Kernel.
+            kernelBase = await Kernel.at(process.env.DAO_KERNEL_BASE_ADDRESS);
+            console.log(`   - DAO - Kernel Base: ${kernelBase.address}`);
+        } else {
+            kernelBase = await Kernel.new(true, { from: deployer });
+            console.log(`   - DAO - Deploy Kernel Base: ${kernelBase.address}`);
+            await sleep();
+        }
+
+        let aclBase;
+        if (process.env.DAO_ACL_BASE_ADDRESS) {
+            // Se especificó la dirección del DAO ACL.
+            aclBase = await ACL.at(process.env.DAO_ACL_BASE_ADDRESS);
+            console.log(`   - DAO - ACL Base: ${aclBase.address}`);
+        } else {
+            aclBase = await ACL.new({ from: deployer });
+            console.log(`   - DAO - Deploy ACL Base: ${aclBase.address}`);
+            await sleep();
+        }
+
+        let registryFactory;
+        if (process.env.DAO_REGISTRY_FACTORY_ADDRESS) {
+            // Se especificó la dirección del DAO Registry Factory.
+            registryFactory = await EVMScriptRegistryFactory.at(process.env.DAO_REGISTRY_FACTORY_ADDRESS);
+            console.log(`   - DAO - Registry Factory: ${registryFactory.address}`);
+        } else {
+            registryFactory = await EVMScriptRegistryFactory.new({ from: deployer });
+            console.log(`   - DAO - Deploy Registry Factory: ${registryFactory.address}`);
+            await sleep();
+        }
+
+        let daoFactory;
+        if (process.env.DAO_FACTORY_ADDRESS) {
+            // Se especificó la dirección del DAO Factory.
+            daoFactory = await DAOFactory.at(process.env.DAO_FACTORY_ADDRESS);
+            console.log(`   - DAO - Factory: ${daoFactory.address}`);
+        } else {
+            daoFactory = await DAOFactory.new(
+                kernelBase.address,
+                aclBase.address,
+                registryFactory.address
+            );
+            console.log(`   - DAO - Deploy Factory: ${daoFactory.address}`);
+            await sleep();
+        }
+
+        // Create a DAO instance.
+        const daoReceipt = await daoFactory.newDAO(deployer)
+        dao = await Kernel.at(getEventArgument(daoReceipt, 'DeployDAO', 'dao'))
+
+        // Grant the deployer address permission to install apps in the DAO.
+        acl = await ACL.at(await dao.acl())
+        const APP_MANAGER_ROLE = await kernelBase.APP_MANAGER_ROLE()
+        await acl.createPermission(
+            deployer,
+            dao.address,
+            APP_MANAGER_ROLE,
+            deployer,
+            { from: deployer }
+        )
+
+        await sleep();
+    }
+
+    return { dao, acl };
 }
 
 module.exports = async ({ getNamedAccounts, deployments, getChainId }) => {
@@ -49,21 +142,9 @@ module.exports = async ({ getNamedAccounts, deployments, getChainId }) => {
     log(`Aragon DAO`);
     log(`-------------------------------------`);
 
-    let dao;
-    let acl;
-    if (process.env.DAO_CONTRACT_ADDRESS) {
-        // Se especificó la dirección de la DAO, por lo que no es creada.
-        dao = await Kernel.at(process.env.DAO_CONTRACT_ADDRESS);
-        acl = await ACL.at(await dao.acl());
-    } else {
-        // No se especificó DAO, por lo que es desplegada una nueva.
-        log(` Deploy Aragon DAO.`);
-        // Deploy de la DAO
-        const response = await newDao(deployer);
-        dao = response.dao;
-        acl = response.acl;
-        await sleep();
-    }
+    const response = await newDao(deployer);
+    const dao = response.dao;
+    const acl = response.acl;
 
     log(` - DAO: ${dao.address}`);
     log(` - ACL: ${acl.address}`);
@@ -106,6 +187,7 @@ module.exports = async ({ getNamedAccounts, deployments, getChainId }) => {
 
         await adminApp.initialize(adminApp.address, account1);
         log(` - Admin initialized`);
+        log(`   - Admin account: ${account1}`);
         await sleep();
     }
 
@@ -131,34 +213,34 @@ module.exports = async ({ getNamedAccounts, deployments, getChainId }) => {
         let docAddress;
         let DOC_PRICE = new BN('00001000000000000000000'); // Precio del DOC: 1,00 US$
         if (network === "rskRegtest") {
-    
+
             log(` Deploy token mocks`);
-    
+
             let rifTokenMock = await RifTokenMock.new({ from: deployer });
             rifAddress = rifTokenMock.address;
-    
+
             let docTokenMock = await DocTokenMock.new({ from: deployer });
             docAddress = docTokenMock.address;
-    
+
         } else if (network === "rskTestnet") {
-    
+
             rifAddress = '0x19f64674d8a5b4e652319f5e239efd3bc969a1fe';
             docAddress = '0xCB46c0ddc60D18eFEB0E586C17Af6ea36452Dae0';
-    
+
         } else if (network === "rskMainnet") {
-    
+
             rifAddress = '0x2acc95758f8b5f583470ba265eb685a8f45fc9d5';
             docAddress = '0xe700691dA7b9851F2F35f8b8182c69c53CcaD9Db';
         }
-    
+
         log(` - Rif Token: ${rifAddress}`);
         log(` - Doc Token: ${docAddress}`);
-    
+
         // Exchange Rate
-    
+
         let moCStateAddress;
         let roCStateAddress;
-    
+
         if (network === "rskRegtest") {
             log(` Deploy state mocks`);
             const RBTC_PRICE = new BN('58172000000000000000000'); // Precio del RBTC: 58172,00 US$
@@ -178,7 +260,7 @@ module.exports = async ({ getNamedAccounts, deployments, getChainId }) => {
             // RoCState de MOC Oracles en Mainnet 
             roCStateAddress = "0x541F68a796Fe5ae3A381d2Aa5a50b975632e40A6";
         }
-    
+
         log(` - MoC State: ${moCStateAddress}`);
         log(` - RoC State: ${roCStateAddress}`);
 
